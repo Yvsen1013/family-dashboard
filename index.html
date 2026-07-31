@@ -1227,8 +1227,13 @@ function showReturnsDetail() {
       return { amount, pct };
     }
 
-    // 本月
+    // 本月：基准日为上月最后一个快照（而非本月当天）
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    let monthBaseline = null;
+    for (const s of snapshots) {
+      if (s.date < monthStart) monthBaseline = s.date;
+    }
+    if (!monthBaseline) monthBaseline = snapshots[0].date;
     // 过去三个月
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).toISOString().slice(0, 10);
     // 过去六个月
@@ -1241,7 +1246,7 @@ function showReturnsDetail() {
     const allTime = snapshots[0].date;
 
     const periods = [
-      { label: '本月收益', period: findClosest(monthStart), showDate: monthStart },
+      { label: '本月收益', period: monthBaseline, showDate: monthBaseline },
       { label: '过去三个月', period: findClosest(threeMonthsAgo), showDate: threeMonthsAgo },
       { label: '过去六个月', period: findClosest(sixMonthsAgo), showDate: sixMonthsAgo },
       { label: '过去十二个月', period: findClosest(twelveMonthsAgo), showDate: twelveMonthsAgo },
