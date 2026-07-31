@@ -823,10 +823,11 @@ function renderMetrics(p) {
   let nearestDays = null, nearestUnderlying = '', nearestExpiryMonth = null, nearestExpiryYear = null;
   if (fcnGroup && fcnGroup.fcn_contracts) {
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     // 第一步：找最近到期的合约
     for (const c of fcnGroup.fcn_contracts) {
-      const exp = new Date(c.expiry);
-      const days = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+      const exp = new Date(c.expiry + 'T00:00:00');
+      const days = Math.round((exp - now) / (1000 * 60 * 60 * 24));
       if (days >= 0 && (nearestDays === null || days < nearestDays)) {
         nearestDays = days; nearestUnderlying = c.underlying;
         nearestExpiryMonth = exp.getMonth(); nearestExpiryYear = exp.getFullYear();
