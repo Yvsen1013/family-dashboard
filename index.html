@@ -853,7 +853,7 @@ function renderQimingVC() {
   if (!portfolio || !portfolio.illiquid) return;
   const ill = portfolio.illiquid;
   document.getElementById('qimingValue').textContent = CNY(ill.value);
-  document.getElementById('qimingNote').textContent = ill.note;
+  document.getElementById('qimingNote').textContent = '占总资产 ' + ill.ratio + '% · 不计入可配置资产';
 }
 
 function showDefenseDetail() {
