@@ -766,6 +766,9 @@ async function loadPrices(force) {
   } catch(e) {
     document.getElementById('priceStatus').innerHTML =
       '<span style="color:var(--amber);">股价更新失败，60秒后重试</span>';
+    // 即使股价获取失败，也刷新FCN天数等不依赖股价的UI
+    renderMetrics(portfolio);
+    renderFCN(portfolio);
   }
 }
 
