@@ -817,23 +817,31 @@ function renderMetrics(p) {
   document.getElementById('attackRatio').textContent = '占总资产 ' + (p.attack.total / p.total_assets * 100).toFixed(1) + '%';
   const fcnGroup = p.attack.assets[2];
   let fcnMonthly = 0;
-  let nearestDays = null, nearestUnderlying = '', nearestExpiryMonth = null;
+  let nearestDays = null, nearestUnderlying = '', nearestExpiryMonth = null, nearestExpiryYear = null;
   if (fcnGroup && fcnGroup.fcn_contracts) {
     const now = new Date();
-    const nextMonth = (now.getMonth() + 1) % 12;
-    const nextYear = now.getFullYear() + (nextMonth === 0 ? 1 : 0);
+    // 第一步：找最近到期的合约
     for (const c of fcnGroup.fcn_contracts) {
       const exp = new Date(c.expiry);
       const days = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
-      if (nearestDays === null || days < nearestDays) { nearestDays = days; nearestUnderlying = c.underlying; nearestExpiryMonth = exp.getMonth() + 1; }
-      if (exp.getFullYear() === nextYear && exp.getMonth() === nextMonth) {
-        fcnMonthly += c.value * c.coupon_rate / 100;
+      if (days >= 0 && (nearestDays === null || days < nearestDays)) {
+        nearestDays = days; nearestUnderlying = c.underlying;
+        nearestExpiryMonth = exp.getMonth(); nearestExpiryYear = exp.getFullYear();
+      }
+    }
+    // 第二步：计算该月所有到期合约的票息
+    if (nearestExpiryMonth !== null) {
+      for (const c of fcnGroup.fcn_contracts) {
+        const exp = new Date(c.expiry);
+        if (exp.getFullYear() === nearestExpiryYear && exp.getMonth() === nearestExpiryMonth) {
+          fcnMonthly += c.value * c.coupon_rate / 100;
+        }
       }
     }
   }
   document.getElementById('fcnAssets').textContent = CNY(Math.round(fcnMonthly));
   if (nearestExpiryMonth !== null) {
-    document.getElementById('fcnLabel').textContent = 'FCN · ' + nearestExpiryMonth + '月票息';
+    document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
   document.getElementById('fcnRatio').textContent = nearestDays !== null ? nearestUnderlying + ' · ' + nearestDays + '天后到期' : '';
   // 动态计算实物黄金价值（银行投资金条 = Au99.99基准 × 银行溢价系数，前一日价格）
