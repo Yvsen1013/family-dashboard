@@ -198,6 +198,17 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   font-size: 16px; display: flex; align-items: center; justify-content: center;
 }
 .overlay-close:hover { background: var(--surface-hover); }
+.returns-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 0; border-bottom: 1px solid rgba(42,46,58,0.3);
+}
+.returns-row:last-child { border-bottom: none; }
+.returns-label { font-size: 14px; font-weight: 500; }
+.returns-period { font-size: 11px; color: var(--text-muted); }
+.returns-value { font-size: 18px; font-weight: 600; text-align: right; }
+.returns-pct { font-size: 14px; font-weight: 600; text-align: right; min-width: 80px; }
+.returns-positive { color: var(--green); }
+.returns-negative { color: var(--red); }
 
 /* 手机端卡片布局 */
 .mobile-cards { display: none; }
@@ -274,8 +285,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 <!-- 总览指标 -->
 <div class="metrics-grid" id="metricsGrid">
-  <div class="metric-card" id="metricTotalAssets">
-    <div class="label">总资产（含风投）</div>
+  <div class="metric-card clickable" onclick="showReturnsDetail()" title="点击查看收益明细" id="metricTotalAssets">
+    <div class="label">总资产（含风投） ▸</div>
     <div class="value" id="totalAssets">---</div>
     <div class="sub">含非流动性资产</div>
   </div>
@@ -387,6 +398,20 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <button class="overlay-close" onclick="closeDefenseDetail()">✕</button>
     </div>
     <div class="overlay-body" id="defenseDetail"></div>
+  </div>
+</div>
+
+<!-- 收益明细弹窗 -->
+<div id="returnsOverlay" class="overlay" style="display:none;">
+  <div class="overlay-card">
+    <div class="overlay-header">
+      <h2>📈 收益明细</h2>
+      <button class="overlay-close" onclick="closeReturnsDetail()">✕</button>
+    </div>
+    <div class="overlay-body" id="returnsDetail"></div>
+    <div style="margin-top:16px;font-size:11px;color:var(--text-muted);">
+      每日 17:00 自动记录快照 · 首次记录：<span id="firstSnapshotDate">---</span>
+    </div>
   </div>
 </div>
 
@@ -1087,14 +1112,177 @@ function renderWatchlist(p) {
   document.getElementById('watchlistCN').innerHTML = (groups['CN'] || []).length > 0 ? groups['CN'].map(buildCard).join('') : '<span style="color:var(--text-muted);font-size:12px;">暂无</span>';
 }
 
+// 快照管理
+const SNAPSHOT_KEY = 'family_dashboard_snapshots';
+const REMOTE_SNAPSHOT_URL = 'data/snapshots.json';
+let remoteSnapshots = [];
+
+function getSnapshots() {
+  const local = (() => {
+    try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]'); }
+    catch(e) { return []; }
+  })();
+  // 合并 remote + local（去重，local 优先）
+  const map = {};
+  for (const s of remoteSnapshots) map[s.date] = s;
+  for (const s of local) map[s.date] = s;
+  const merged = Object.values(map).sort((a,b) => a.date.localeCompare(b.date));
+  return merged;
+}
+
+async function loadRemoteSnapshots() {
+  try {
+    const resp = await fetch(REMOTE_SNAPSHOT_URL);
+    if (resp.ok) remoteSnapshots = await resp.json();
+  } catch(e) { /* 离线或未部署时忽略 */ }
+}
+
+function saveSnapshots(arr) {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr));
+  } catch(e) { console.warn('localStorage full'); }
+}
+
+function getCurrentTotal() {
+  if (!portfolio) return 0;
+  const goldQ = prices['GOLD'];
+  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
+  const bankPremium = 1.08;
+  const goldPerGram = Math.round(au9999PerGram * bankPremium);
+  const goldValue = 300 * goldPerGram;
+  const defenseBase = portfolio.defense.total - 270000;
+  const defenseDynamic = defenseBase + goldValue;
+  return portfolio.attack.total + defenseDynamic + (portfolio.illiquid ? portfolio.illiquid.value : 0);
+}
+
+function recordSnapshot() {
+  const snapshots = getSnapshots();
+  const today = new Date().toISOString().slice(0, 10);
+  if (snapshots.length > 0 && snapshots[snapshots.length-1].date === today) return; // 今日已记录
+  const total = getCurrentTotal();
+  if (total <= 0) return;
+  snapshots.push({
+    date: today,
+    total: Math.round(total),
+    attack: portfolio.attack.total,
+    defense: (() => {
+      const goldQ = prices['GOLD'];
+      const au = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
+      return portfolio.defense.total - 270000 + Math.round(300 * au * 1.08);
+    })(),
+    illiquid: portfolio.illiquid ? portfolio.illiquid.value : 0
+  });
+  // 保留最近 500 条
+  if (snapshots.length > 500) snapshots.splice(0, snapshots.length - 500);
+  saveSnapshots(snapshots);
+}
+
+function showReturnsDetail() {
+  const snapshots = getSnapshots();
+  if (snapshots.length === 0) {
+    document.getElementById('returnsDetail').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无历史快照，明天 17:00 后将自动记录。</div>';
+    document.getElementById('firstSnapshotDate').textContent = '---';
+  } else {
+    const currentTotal = getCurrentTotal();
+    document.getElementById('firstSnapshotDate').textContent = snapshots[0].date;
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    function findClosest(targetDate) {
+      let best = null;
+      for (const s of snapshots) {
+        if (s.date <= todayStr && (best === null || s.date > best.date)) best = s.date;
+        if (s.date >= targetDate) break;
+      }
+      // fallback: find nearest before target
+      if (!best) {
+        for (const s of snapshots) {
+          if (s.date <= targetDate) best = s.date;
+        }
+      }
+      if (!best) best = snapshots[0].date;
+      return best;
+    }
+
+    function getSnapshot(dateStr) {
+      return snapshots.find(s => s.date === dateStr);
+    }
+
+    function calcReturn(startDate) {
+      const s = getSnapshot(startDate);
+      if (!s) return { amount: null, pct: null };
+      const amount = currentTotal - s.total;
+      const pct = (amount / s.total * 100);
+      return { amount, pct };
+    }
+
+    // 本月
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    // 过去三个月
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).toISOString().slice(0, 10);
+    // 过去六个月
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()).toISOString().slice(0, 10);
+    // 过去十二个月
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate()).toISOString().slice(0, 10);
+    // 今年以来
+    const yearStart = now.getFullYear() + '-01-01';
+    // 记账以来
+    const allTime = snapshots[0].date;
+
+    const periods = [
+      { label: '本月收益', period: findClosest(monthStart), showDate: monthStart },
+      { label: '过去三个月', period: findClosest(threeMonthsAgo), showDate: threeMonthsAgo },
+      { label: '过去六个月', period: findClosest(sixMonthsAgo), showDate: sixMonthsAgo },
+      { label: '过去十二个月', period: findClosest(twelveMonthsAgo), showDate: twelveMonthsAgo },
+      { label: '今年以来', period: findClosest(yearStart), showDate: yearStart },
+      { label: '记账以来', period: allTime, showDate: allTime }
+    ];
+
+    let html = '';
+    for (const p of periods) {
+      const r = calcReturn(p.period);
+      if (r.amount === null && r.pct === null) {
+        html += `<div class="returns-row">
+          <div><span class="returns-label">${p.label}</span><br><span class="returns-period">基准日：${p.period} 起</span></div>
+          <div class="returns-pct" style="color:var(--text-muted);">数据不足</div>
+        </div>`;
+      } else {
+        const cls = r.amount >= 0 ? 'returns-positive' : 'returns-negative';
+        const sign = r.amount >= 0 ? '+' : '';
+        html += `<div class="returns-row">
+          <div><span class="returns-label">${p.label}</span><br><span class="returns-period">基准日：${p.period} · ${snapshots.length}条快照</span></div>
+          <div style="text-align:right;">
+            <div class="${cls} returns-value">${sign}¥${FORMATTER.format(Math.round(r.amount))}</div>
+            <div class="${cls} returns-pct">${sign}${r.pct.toFixed(2)}%</div>
+          </div>
+        </div>`;
+      }
+    }
+
+    document.getElementById('returnsDetail').innerHTML = html;
+  }
+  document.getElementById('returnsOverlay').style.display = 'flex';
+}
+
+function closeReturnsDetail() {
+  document.getElementById('returnsOverlay').style.display = 'none';
+}
+
 // 点击遮罩关闭弹窗
 document.getElementById('defenseOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeDefenseDetail();
 });
+document.getElementById('returnsOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeReturnsDetail();
+});
 
 // 启动
 loadPortfolio();
-loadPrices();
+loadRemoteSnapshots().then(() => {
+  loadPrices().then(() => {
+    recordSnapshot();
+  });
+});
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
 </script>
