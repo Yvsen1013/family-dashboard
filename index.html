@@ -1018,13 +1018,14 @@ function renderFCN(p) {
   const fcn = p.attack.assets[2];
   if (!fcn || !fcn.fcn_contracts) return;
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
   let html = '';
   let hasWarning = false;
   let warningText = '';
 
   for (const c of fcn.fcn_contracts) {
-    const expiry = new Date(c.expiry);
-    const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+    const expiry = new Date(c.expiry + 'T00:00:00');
+    const daysLeft = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
     let daysCls = 'safe';
     if (daysLeft <= 7) daysCls = 'urgent';
     else if (daysLeft <= 30) daysCls = 'soon';
