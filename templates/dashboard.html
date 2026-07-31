@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家庭资产 · 价值投资作战面板</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface-hover: #222636;
+  --border: #2a2e3a;
+  --text: #e1e4ea;
+  --text-secondary: #8b90a0;
+  --text-muted: #5c6170;
+  --green: #26a69a;
+  --red: #ef5350;
+  --amber: #ffa726;
+  --blue: #42a5f5;
+  --purple: #7e57c2;
+  --pink: #ec407a;
+  --accent: #5c6bc0;
+  --card-radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+.header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+}
+.header-left h1 { margin-bottom: 4px; }
+.header-left .subtitle { color: var(--text-secondary); font-size: 13px; }
+.header-right { text-align: right; }
+.header-right .update-time { font-size: 12px; color: var(--text-muted); }
+.header-right .refresh-btn {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 8px;
+}
+.refresh-btn:hover { background: var(--surface-hover); }
+.live-dot {
+  display: inline-block; width: 7px; height: 7px; background: var(--green);
+  border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin-bottom: 28px;
+}
+.metric-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--card-radius); padding: 16px 20px;
+}
+.metric-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.metric-card .value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+.metric-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.value.green { color: var(--green); }
+.value.red { color: var(--red); }
+.green { color: var(--green); }
+.red { color: var(--red); }
+.value.amber { color: var(--amber); }
+
+.section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--card-radius); padding: 20px 24px; margin-bottom: 20px;
+}
+.section-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+.section-header h2 { margin-bottom: 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(42,46,58,0.5); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 500;
+}
+.tag-risk { background: rgba(239,83,80,0.15); color: var(--red); }
+.tag-short { background: rgba(255,167,38,0.15); color: var(--amber); }
+.tag-advisory { background: rgba(126,87,194,0.15); color: var(--purple); }
+.tag-watch { background: rgba(66,165,245,0.1); color: var(--blue); }
+
+.status-bar {
+  height: 4px; border-radius: 2px; background: var(--border); margin-top: 4px; overflow: hidden;
+}
+.status-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+.status-safe { background: var(--green); }
+.status-warn { background: var(--amber); }
+.status-danger { background: var(--red); }
+
+.fcn-card {
+  border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+  margin-bottom: 12px; background: rgba(255,255,255,0.01);
+}
+.fcn-card:last-child { margin-bottom: 0; }
+.fcn-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.fcn-title { font-weight: 600; font-size: 14px; }
+.fcn-days { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 500; }
+.fcn-days.urgent { background: rgba(239,83,80,0.15); color: var(--red); }
+.fcn-days.soon { background: rgba(255,167,38,0.15); color: var(--amber); }
+.fcn-days.safe { background: rgba(38,166,154,0.15); color: var(--green); }
+.fcn-row { display: flex; gap: 24px; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.fcn-row span { color: var(--text); font-weight: 500; }
+
+.watch-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;
+}
+.watch-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px;
+  background: rgba(255,255,255,0.01);
+}
+.watch-card .stock-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.watch-card .stock-symbol { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.watch-card .stock-price { font-size: 18px; font-weight: 600; }
+.watch-card .stock-target { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.watch-card .stock-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-style: italic; }
+.watch-card.status-overvalued { border-left: 3px solid var(--red); }
+.watch-card.status-fair { border-left: 3px solid var(--amber); }
+.watch-card.status-undervalued { border-left: 3px solid var(--green); }
+.watch-card.status-watching { border-left: 3px solid var(--blue); }
+
+.concentration-warning {
+  background: rgba(239,83,80,0.08); border: 1px solid rgba(239,83,80,0.2);
+  border-radius: 8px; padding: 12px 16px; margin-top: 16px;
+  display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.concentration-warning .icon { font-size: 18px; }
+.concentration-warning .highlight { color: var(--red); font-weight: 600; }
+
+.framework-box {
+  border: 1px dashed var(--border); border-radius: 8px;
+  padding: 16px 20px; margin-top: 16px; font-size: 12px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.framework-step {
+  padding: 6px 12px; border-radius: 6px; background: var(--surface-hover);
+  font-weight: 500; color: var(--text);
+}
+.framework-arrow { color: var(--accent); }
+
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+.error { color: var(--red); padding: 12px; }
+.price-loading { color: var(--text-muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>家庭资产仪表盘</h1>
+  </div>
+  <div class="header-right">
+    <div class="update-time">数据基准日: 2026.07.27 | <span id="priceStatus"><span class="price-loading">股价加载中...</span></span></div>
+    <button class="refresh-btn" onclick="refreshPrices()">刷新实时股价</button>
+  </div>
+</div>
+
+<!-- 总览指标 -->
+<div class="metrics-grid" id="metricsGrid">
+  <div class="metric-card">
+    <div class="label">总资产（含风投）</div>
+    <div class="value" id="totalAssets">---</div>
+    <div class="sub">含非流动性资产</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">可流动资产</div>
+    <div class="value" style="color:var(--accent);" id="liquidAssets">---</div>
+    <div class="sub">扣除启明风投 ¥465.7万</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">进攻资产</div>
+    <div class="value" id="attackAssets">---</div>
+    <div class="sub" id="attackRatio"></div>
+  </div>
+  <div class="metric-card">
+    <div class="label">防守资产</div>
+    <div class="value" style="color:var(--green);" id="defenseAssets">---</div>
+    <div class="sub" id="defenseRatio"></div>
+  </div>
+  <div class="metric-card">
+    <div class="label">腾讯总敞口</div>
+    <div class="value amber" id="tencentExposure">---</div>
+    <div class="sub" style="color:var(--amber);" id="tencentWarning"></div>
+  </div>
+</div>
+
+<!-- 持仓明细 -->
+<div class="section">
+  <div class="section-header">
+    <h2>A股 & 港股 持仓</h2>
+    <span style="font-size:12px;color:var(--text-muted);">进攻端 · 价值投资核心</span>
+  </div>
+  <table>
+    <colgroup>
+      <col style="width:16%"><col style="width:8%"><col style="width:12%"><col style="width:6%">
+      <col style="width:12%"><col style="width:12%"><col style="width:9%"><col style="width:9%"><col style="width:16%">
+    </colgroup>
+    <thead>
+      <tr><th>标的</th><th>标签</th><th class="num">市值</th><th class="num">占比</th><th class="num">成本价</th><th class="num">现价</th><th class="num">当前PE</th><th class="num">合理PE</th><th class="num">浮盈/亏</th></tr>
+    </thead>
+    <tbody id="hkPositions"></tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2>美股 持仓</h2>
+  </div>
+  <table>
+    <colgroup>
+      <col style="width:16%"><col style="width:8%"><col style="width:12%"><col style="width:6%">
+      <col style="width:12%"><col style="width:12%"><col style="width:9%"><col style="width:9%"><col style="width:16%">
+    </colgroup>
+    <thead>
+      <tr><th>标的</th><th>标签</th><th class="num">市值</th><th class="num">占比</th><th class="num">成本价</th><th class="num">现价</th><th class="num">当前PE</th><th class="num">合理PE</th><th class="num">浮盈/亏</th></tr>
+    </thead>
+    <tbody id="usPositions"></tbody>
+  </table>
+</div>
+
+<!-- FCN 追踪 -->
+<div class="section">
+  <div class="section-header">
+    <h2>FCN 合约追踪</h2>
+    <span style="font-size:12px;color:var(--text-muted);">固定票息票据 · 时间价值工具</span>
+  </div>
+  <div id="fcnContainer"></div>
+  <div class="concentration-warning" id="fcnWarning" style="display:none;">
+    <span class="icon">⚠️</span>
+    <span id="fcnWarningText"></span>
+  </div>
+</div>
+
+<!-- 估值仪表盘 / 狩猎清单 -->
+<div class="section">
+  <div class="section-header">
+    <h2>估值仪表盘 · 狩猎清单</h2>
+    <span style="font-size:12px;color:var(--text-muted);">严格估值判断，只在击球区出手</span>
+  </div>
+  <div class="watch-grid" id="watchlistGrid"></div>
+</div>
+
+<script>
+const FORMATTER = new Intl.NumberFormat('zh-CN');
+const CNY = (n) => n == null ? '---' : '¥' + FORMATTER.format(Math.round(n));
+const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
+
+// 内嵌持仓数据（无需后端也可见）
+const EMBEDDED_PORTFOLIO = {
+  "total_assets": 12180606,
+  "liquid_assets": 7523606,
+  "updated": "2026-07-27",
+  "attack": {
+    "total": 3529551,
+    "ratio": 28.98,
+    "assets": [
+      {
+        "category": "A股 & 港股",
+        "total_value": 1269599,
+        "ratio": 16.87,
+        "holdings": [
+          {
+            "name": "E大长赢",
+            "symbol": null,
+            "market": "CN",
+            "value": 164622,
+            "ratio": 2.19,
+            "cost": null,
+            "note": "投顾产品",
+            "tags": [
+              "投顾"
+            ]
+          },
+          {
+            "name": "E大长赢（新）",
+            "symbol": null,
+            "market": "CN",
+            "value": 91973,
+            "ratio": 1.22,
+            "cost": null,
+            "note": "投顾产品",
+            "tags": [
+              "投顾"
+            ]
+          },
+          {
+            "name": "腾讯控股",
+            "symbol": "0700.HK",
+            "market": "HK",
+            "value": 562980,
+            "ratio": 7.48,
+            "cost": 488.0,
+            "note": "核心持仓",
+            "tags": []
+          },
+          {
+            "name": "泡泡玛特",
+            "symbol": "9992.HK",
+            "market": "HK",
+            "value": 416859,
+            "ratio": 5.54,
+            "cost": 175.0,
+            "note": "",
+            "tags": []
+          },
+          {
+            "name": "长飞光纤",
+            "symbol": "601869.SS",
+            "market": "CN",
+            "value": 33165,
+            "ratio": 0.44,
+            "cost": 330.14,
+            "note": "短期交易",
+            "tags": [
+              "短期"
+            ]
+          }
+        ],
+        "watchlist": [
+          {
+            "name": "农夫山泉",
+            "symbol": "9633.HK",
+            "market": "HK",
+            "target_pe": null,
+            "target_price": null,
+            "note": ""
+          },
+          {
+            "name": "中国海油",
+            "symbol": "600938.SS",
+            "market": "CN",
+            "target_pe": null,
+            "target_mcap": "1.4-1.7万亿市值",
+            "note": ""
+          },
+          {
+            "name": "贵州茅台",
+            "symbol": "600519.SS",
+            "market": "CN",
+            "target_pe": null,
+            "target_price": null,
+            "note": ""
+          },
+          {
+            "name": "飞荣达",
+            "symbol": "300602.SZ",
+            "market": "CN",
+            "target_pe": "40-60",
+            "target_price": null,
+            "note": "短期"
+          },
+          {
+            "name": "东山精密",
+            "symbol": "002384.SZ",
+            "market": "CN",
+            "target_pe": "40-80",
+            "target_price": null,
+            "note": "短期"
+          }
+        ]
+      },
+      {
+        "category": "美股",
+        "total_value": 259952,
+        "ratio": 3.45,
+        "holdings": [
+          {
+            "name": "拼多多",
+            "symbol": "PDD",
+            "market": "US",
+            "value": 127127,
+            "ratio": 1.69,
+            "cost": 127.53,
+            "note": "",
+            "tags": []
+          },
+          {
+            "name": "特斯拉",
+            "symbol": "TSLA",
+            "market": "US",
+            "value": 83922,
+            "ratio": 1.12,
+            "cost": 339.25,
+            "note": "风险投资",
+            "tags": [
+              "风投"
+            ]
+          },
+          {
+            "name": "ROCKET LAB",
+            "symbol": "RKLB",
+            "market": "US",
+            "value": 48903,
+            "ratio": 0.65,
+            "cost": 77.6,
+            "note": "风险投资",
+            "tags": [
+              "风投"
+            ]
+          }
+        ],
+        "watchlist": [
+          {
+            "name": "英伟达",
+            "symbol": "NVDA",
+            "market": "US",
+            "target_pe": null,
+            "target_price": null,
+            "note": ""
+          },
+          {
+            "name": "谷歌",
+            "symbol": "GOOGL",
+            "market": "US",
+            "target_pe": null,
+            "target_price": null,
+            "note": ""
+          },
+          {
+            "name": "苹果",
+            "symbol": "AAPL",
+            "market": "US",
+            "target_pe": null,
+            "target_price": null,
+            "note": ""
+          },
+          {
+            "name": "SPACE X",
+            "symbol": null,
+            "market": "PRIVATE",
+            "target_pe": null,
+            "target_price": null,
+            "note": "未上市"
+          }
+        ]
+      },
+      {
+        "category": "FCN",
+        "total_value": 2000000,
+        "ratio": 26.58,
+        "fcn_contracts": [
+          {
+            "id": "No.1",
+            "underlying": "腾讯控股",
+            "symbol": "0700.HK",
+            "value": 1000000,
+            "ratio": 13.29,
+            "strike": 421.0,
+            "coupon_rate": 1.9177,
+            "expiry": "2026-08-06",
+            "cost": 421.0
+          },
+          {
+            "id": "No.2",
+            "underlying": "腾讯控股",
+            "symbol": "0700.HK",
+            "value": 1000000,
+            "ratio": 13.29,
+            "strike": 447.0,
+            "coupon_rate": 2.0271,
+            "expiry": "2026-09-01",
+            "cost": 447.0
+          }
+        ]
+      }
+    ]
+  },
+  "defense": {
+    "total": 3994055,
+    "ratio": 32.79,
+    "assets": [
+      {
+        "name": "嘉实固收+ 1号",
+        "value": 714600,
+        "ratio": 9.5,
+        "type": "固收"
+      },
+      {
+        "name": "嘉实固收+ 6号",
+        "value": 361129,
+        "ratio": 4.8,
+        "type": "固收"
+      },
+      {
+        "name": "实物黄金（300g）",
+        "value": 270000,
+        "ratio": 3.59,
+        "type": "黄金"
+      },
+      {
+        "name": "货币基金 - 我",
+        "value": 126819,
+        "ratio": 1.69,
+        "type": "现金"
+      },
+      {
+        "name": "货币基金 - 妈",
+        "value": 1600000,
+        "ratio": 21.27,
+        "type": "现金"
+      },
+      {
+        "name": "珠海公积金",
+        "value": 167339,
+        "ratio": 2.22,
+        "type": "现金"
+      },
+      {
+        "name": "北京公积金",
+        "value": 624168,
+        "ratio": 8.3,
+        "type": "现金"
+      },
+      {
+        "name": "启明投资收益",
+        "value": 130000,
+        "ratio": 1.73,
+        "type": "现金"
+      }
+    ]
+  },
+  "illiquid": {
+    "name": "启明风投（未退出）",
+    "value": 4657000,
+    "ratio": 38.23,
+    "note": "非流动性资产，不计入可配置资产"
+  }
+};
+
+let portfolio = EMBEDDED_PORTFOLIO;
+let prices = {"0700.HK":{"name":"腾讯控股","price":475.2,"prev_close":471.8,"pe":17.36,"currency":"HKD"},"9992.HK":{"name":"泡泡玛特","price":162.8,"prev_close":167.4,"pe":15.33,"currency":"HKD"},"9633.HK":{"name":"农夫山泉","price":43.92,"prev_close":44.15,"pe":28.12,"currency":"HKD"},"600938.SS":{"name":"中国海油","price":32.09,"prev_close":32.04,"pe":12.23,"currency":"CNY"},"600519.SS":{"name":"贵州茅台","price":1337.42,"prev_close":1338.84,"pe":20.21,"currency":"CNY"},"300602.SZ":{"name":"飞荣达","price":32.61,"prev_close":34.15,"pe":49.78,"currency":"CNY"},"601869.SS":{"name":"长飞光纤","price":279.01,"prev_close":292.15,"pe":199.62,"currency":"CNY"},"002384.SZ":{"name":"东山精密","price":173.49,"prev_close":176.9,"pe":155.76,"currency":"CNY"},"PDD":{"name":"拼多多","price":87.44,"prev_close":87.19,"pe":9.35,"currency":"USD"},"TSLA":{"name":"特斯拉","price":308.85,"prev_close":305.11,"pe":285.97,"currency":"USD"},"RKLB":{"name":"Rocket Lab","price":64.68,"prev_close":62.62,"pe":-202.13,"currency":"USD"},"NVDA":{"name":"英伟达","price":195.04,"prev_close":194.81,"pe":29.87,"currency":"USD"},"GOOGL":{"name":"谷歌-A","price":333.66,"prev_close":332.77,"pe":16.74,"currency":"USD"},"AAPL":{"name":"苹果","price":333.43,"prev_close":332.59,"pe":40.37,"currency":"USD"}};
+let refreshTimer = null;
+
+// 腾讯行情 API 符号映射（支持 CORS，浏览器直连）
+const QT_MAP = {
+  '0700.HK':'hk00700', '9992.HK':'hk09992', '9633.HK':'hk09633',
+  '600938.SS':'sh600938', '600519.SS':'sh600519', '300602.SZ':'sz300602',
+  '601869.SS':'sh601869', '002384.SZ':'sz002384',
+  'PDD':'usPDD', 'TSLA':'usTSLA', 'RKLB':'usRKLB',
+  'NVDA':'usNVDA', 'GOOGL':'usGOOGL', 'AAPL':'usAAPL'
+};
+const QT_REVERSE = {};
+for (const [k,v] of Object.entries(QT_MAP)) QT_REVERSE[v] = k;
+const QT_CODES = Object.values(QT_MAP).join(',');
+
+function safeFloat(s) { const n = parseFloat(s); return isNaN(n) ? null : n; }
+
+async function loadPrices(force) {
+  try {
+    const url = 'http://qt.gtimg.cn/q=' + QT_CODES;
+    const resp = await fetch(url);
+    const buf = await resp.arrayBuffer();
+    const text = new TextDecoder('gbk').decode(buf);
+    const results = {};
+    for (const line of text.split('\n')) {
+      const m = line.match(/^v_(\w+)="([^"]*)"/);
+      if (!m) continue;
+      const qtCode = m[1], raw = m[2];
+      const f = raw.split('~');
+      if (f.length < 40) continue;
+      const symbol = QT_REVERSE[qtCode];
+      if (!symbol) continue;
+      const price = safeFloat(f[3]);
+      const prev = safeFloat(f[4]);
+      const pe = safeFloat(f[39]);
+      const mcap = safeFloat(f[44]);
+      let currency = 'CNY';
+      if (qtCode.startsWith('hk')) currency = 'HKD';
+      else if (qtCode.startsWith('us')) currency = 'USD';
+      results[symbol] = {
+        name: f[1], price, prev_close: prev, pe, market_cap: mcap, currency,
+        change_pct: (price && prev && prev !== 0) ? +((price-prev)/prev*100).toFixed(2) : null
+      };
+    }
+    if (Object.keys(results).length > 0) {
+      prices = results;
+      document.getElementById('priceStatus').innerHTML =
+        '<span class="live-dot"></span>实时股价 ' + new Date().toLocaleTimeString('zh-CN');
+      renderPositions(portfolio);
+      renderFCN(portfolio);
+      renderWatchlist(portfolio);
+      updateTencentExposure();
+    }
+  } catch(e) {
+    document.getElementById('priceStatus').innerHTML =
+      '<span style="color:var(--amber);">股价更新失败，60秒后重试</span>';
+  }
+}
+
+function refreshPrices() { loadPrices(true); }
+
+function loadPortfolio() {
+  renderMetrics(portfolio);
+  renderPositions(portfolio);
+  renderFCN(portfolio);
+  renderWatchlist(portfolio);
+}
+
+function getPrice(symbol) {
+  if (!symbol) return null;
+  const q = prices[symbol];
+  if (!q) return null;
+  return { price: q.price, pe: q.pe, change_pct: q.change_pct, prev_close: q.previous_close, currency: q.currency };
+}
+
+function priceDisplay(symbol, cost, value, shares) {
+  const q = getPrice(symbol);
+  if (!q || !q.price) return { price: '<span class="price-loading">加载中</span>', pe: '---', pnl: '---', pnlNum: 0 };
+  if (!cost) return { price: (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price), pe: q.pe ? NUM(q.pe, 1) : '---', pnl: '---', pnlNum: 0 };
+
+  const pnlPct = ((q.price - cost) / cost * 100);
+  const cls = pnlPct >= 0 ? 'green' : 'red';
+  const sign = pnlPct >= 0 ? '+' : '';
+  return {
+    price: (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price),
+    pe: q.pe ? NUM(q.pe, 1) : '---',
+    pnl: `<span class="${cls}">${sign}${pnlPct.toFixed(2)}%</span>`,
+    pnlNum: pnlPct
+  };
+}
+
+function renderMetrics(p) {
+  document.getElementById('totalAssets').textContent = CNY(p.total_assets);
+  document.getElementById('liquidAssets').textContent = CNY(p.liquid_assets);
+  document.getElementById('attackAssets').textContent = CNY(p.attack.total);
+  document.getElementById('attackRatio').textContent = '占可流动资产 ' + (p.attack.total / p.liquid_assets * 100).toFixed(1) + '%';
+  document.getElementById('defenseAssets').textContent = CNY(p.defense.total);
+  document.getElementById('defenseRatio').textContent = '占可流动资产 ' + (p.defense.total / p.liquid_assets * 100).toFixed(1) + '%';
+  updateTencentExposure();
+}
+
+function updateTencentExposure() {
+  if (!portfolio) return;
+  const tencentEquity = 562980; // 腾讯直接持股
+  const tencentFCN = 2000000; // 两笔 FCN
+  const totalTencent = tencentEquity + tencentFCN;
+  const pctLiquid = totalTencent / portfolio.liquid_assets * 100;
+  document.getElementById('tencentExposure').textContent = CNY(totalTencent);
+  document.getElementById('tencentWarning').textContent =
+    '占可流动资产 ' + pctLiquid.toFixed(1) + '%（含 FCN 隐性杠杆）';
+
+  // 如果腾讯价格低于 FCN 行权价，加强警告
+  const q = prices['0700.HK'];
+  if (q && q.price) {
+    const strike1 = 421, strike2 = 447;
+    if (q.price < strike1) {
+      document.getElementById('tencentWarning').textContent += ' | FCN 行权价高于现价，接货风险高！';
+      document.getElementById('tencentExposure').classList.add('red');
+    } else if (q.price < strike2) {
+      document.getElementById('tencentWarning').textContent += ' | FCN No.2 接近行权价';
+      document.getElementById('tencentExposure').classList.add('amber');
+    }
+  }
+}
+
+function renderPositions(p) {
+  // A股 & 港股
+  const hk = p.attack.assets[0];
+  let hkHtml = '';
+  for (const h of hk.holdings) {
+    if (!h.symbol) {
+      const tagCls = h.tags.includes('投顾') ? 'tag-advisory' : 'tag-short';
+      const tagLabel = h.tags.includes('投顾') ? '投顾' : '短期';
+      hkHtml += `<tr>
+        <td style="font-weight:500;">${h.name} <span style="font-size:11px;color:var(--text-muted);">${h.note}</span></td>
+        <td><span class="tag ${tagCls}">${tagLabel}</span></td>
+        <td class="num">${CNY(h.value)}</td>
+        <td class="num">${h.ratio}%</td>
+        <td class="num">---</td>
+        <td class="num">---</td>
+        <td class="num">---</td>
+        <td class="num">---</td>
+        <td class="num">---</td>
+      </tr>`;
+    } else {
+      const { price, pe, pnl } = priceDisplay(h.symbol, h.cost, h.value);
+      const tagEl = h.tags.length > 0
+        ? `<span class="tag ${h.tags.includes('短期') ? 'tag-short' : ''}">${h.tags.join(', ')}</span>`
+        : '';
+      hkHtml += `<tr>
+        <td style="font-weight:500;">${h.name}</td>
+        <td>${tagEl}</td>
+        <td class="num">${CNY(h.value)}</td>
+        <td class="num">${h.ratio}%</td>
+        <td class="num">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</td>
+        <td class="num">${price}</td>
+        <td class="num">${pe}</td>
+        <td class="num">${h.target_pe || '---'}</td>
+        <td class="num">${pnl}</td>
+      </tr>`;
+    }
+  }
+  document.getElementById('hkPositions').innerHTML = hkHtml;
+
+  // 美股
+  const us = p.attack.assets[1];
+  let usHtml = '';
+  for (const h of us.holdings) {
+    const { price, pe, pnl } = priceDisplay(h.symbol, h.cost, h.value);
+    const tagEl = h.tags.length > 0
+      ? `<span class="tag tag-risk">风投</span>`
+      : '';
+    usHtml += `<tr>
+      <td style="font-weight:500;">${h.name}</td>
+      <td>${tagEl}</td>
+      <td class="num">${CNY(h.value)}</td>
+      <td class="num">${h.ratio}%</td>
+      <td class="num">${h.cost ? '$' + NUM(h.cost) : '---'}</td>
+      <td class="num">${price}</td>
+      <td class="num">${pe}</td>
+      <td class="num">${h.target_pe || '---'}</td>
+      <td class="num">${pnl}</td>
+    </tr>`;
+  }
+  document.getElementById('usPositions').innerHTML = usHtml;
+}
+
+function renderFCN(p) {
+  const fcn = p.attack.assets[2];
+  if (!fcn || !fcn.fcn_contracts) return;
+  const now = new Date();
+  let html = '';
+  let hasWarning = false;
+  let warningText = '';
+
+  for (const c of fcn.fcn_contracts) {
+    const expiry = new Date(c.expiry);
+    const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+    let daysCls = 'safe';
+    if (daysLeft <= 7) daysCls = 'urgent';
+    else if (daysLeft <= 30) daysCls = 'soon';
+
+    const q = prices[c.symbol];
+    const currentPrice = q ? q.price : null;
+    const aboveStrike = currentPrice && currentPrice > c.strike;
+    const margin = currentPrice ? ((currentPrice - c.strike) / c.strike * 100) : null;
+    const statusCls = aboveStrike ? 'status-safe' : 'status-danger';
+    const statusLabel = aboveStrike
+      ? '安全（现价高于行权价 ' + margin.toFixed(1) + '%）'
+      : '危险（现价低于行权价）';
+
+    if (!aboveStrike && currentPrice) {
+      hasWarning = true;
+      warningText = 'FCN ' + c.id + ' 现价已低于行权价，到期可能触发接货！';
+    }
+
+    html += `<div class="fcn-card">
+      <div class="fcn-header">
+        <span class="fcn-title">FCN ${c.id} · ${c.underlying}</span>
+        <span class="fcn-days ${daysCls}">${daysLeft}天后到期</span>
+      </div>
+      <div class="fcn-row">
+        <span>面额:</span> ${CNY(c.value)}
+        <span style="margin-left:16px;">行权价:</span> HK$${NUM(c.strike)}
+        <span style="margin-left:16px;">现价:</span> ${currentPrice ? 'HK$'+NUM(currentPrice) : '<span class="price-loading">加载中</span>'}
+        <span style="margin-left:16px;">票息率:</span> ${c.coupon_rate}%
+        <span style="margin-left:16px;">到期日:</span> ${c.expiry}
+      </div>
+      <div class="status-bar"><div class="status-fill ${statusCls}" style="width:${aboveStrike ? '100' : '30'}%"></div></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${statusLabel}</div>
+    </div>`;
+  }
+
+  document.getElementById('fcnContainer').innerHTML = html;
+  if (hasWarning && warningText) {
+    document.getElementById('fcnWarning').style.display = 'flex';
+    document.getElementById('fcnWarningText').textContent = warningText;
+  } else {
+    document.getElementById('fcnWarning').style.display = 'none';
+  }
+}
+
+function renderWatchlist(p) {
+  const allWatchlist = [];
+
+  // 从持仓数据提取观察清单
+  for (const assetGroup of p.attack.assets) {
+    if (assetGroup.watchlist) {
+      for (const w of assetGroup.watchlist) {
+        allWatchlist.push({ ...w, category: assetGroup.category });
+      }
+    }
+  }
+
+  let html = '';
+  for (const w of allWatchlist) {
+    const q = w.symbol ? getPrice(w.symbol) : null;
+    const priceStr = q && q.price
+      ? (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price)
+      : '<span class="price-loading">---</span>';
+
+    // 估值状态判断
+    let statusCls = 'status-watching';
+    let statusLabel = '观察中';
+    if (w.target_pe && q && q.pe) {
+      const [peLow, peHigh] = w.target_pe.split('-').map(Number);
+      if (q.pe < peLow) { statusCls = 'status-undervalued'; statusLabel = '低估'; }
+      else if (q.pe > peHigh) { statusCls = 'status-overvalued'; statusLabel = '高估'; }
+      else { statusCls = 'status-fair'; statusLabel = '合理区间'; }
+    }
+
+    html += `<div class="watch-card ${statusCls}">
+      <div class="stock-name">${w.name} ${w.note ? '<span style="font-size:11px;color:var(--text-muted);">(' + w.note + ')</span>' : ''}</div>
+      <div class="stock-symbol">${w.symbol || '---'} · ${w.market}</div>
+      <div class="stock-price">${priceStr} <span style="font-size:11px;color:var(--text-secondary);">${statusLabel}</span></div>
+      ${w.target_price ? '<div class="stock-target">目标: ' + w.target_price + '</div>' : ''}
+      ${w.target_pe ? '<div class="stock-target">PE目标区间: ' + w.target_pe + '</div>' : ''}
+      ${w.target_mcap ? '<div class="stock-target">目标市值: ' + w.target_mcap + '</div>' : ''}
+    </div>`;
+  }
+
+  document.getElementById('watchlistGrid').innerHTML = html || '<div style="color:var(--text-muted);">暂无观察标的</div>';
+}
+
+// 启动
+loadPortfolio();
+loadPrices();
+// 每60秒自动刷新股价
+refreshTimer = setInterval(() => loadPrices(), 60000);
+</script>
+
+</body>
+</html>
