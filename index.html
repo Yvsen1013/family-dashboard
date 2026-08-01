@@ -185,6 +185,13 @@ tr:hover td { background: var(--surface-hover); }
   font-weight: 600; color: var(--text); border: 1.5px solid var(--border);
 }
 .framework-arrow { color: var(--accent); font-weight: 700; }
+.arrow { display: inline-block; font-size: 13px; }
+@media (min-width: 769px) {
+  .arrow { transform: scaleY(1.5); }
+}
+@media (max-width: 768px) {
+  .arrow { font-size: 14px; -webkit-text-stroke: 0.4px currentColor; }
+}
 
 .loading { text-align: center; padding: 40px; color: var(--text-muted); }
 .error { color: var(--red); padding: 12px; font-weight: 600; }
@@ -811,8 +818,8 @@ function getPrice(symbol) {
 function priceArrow(symbol) {
   const q = getPrice(symbol);
   if (!q || !q.price || !q.prev_close) return '';
-  if (q.price > q.prev_close) return ' <span class="green" style="font-size:12px;">\u2191</span>';
-  if (q.price < q.prev_close) return ' <span class="red" style="font-size:12px;">\u2193</span>';
+  if (q.price > q.prev_close) return ' <span class="arrow green">\u2191</span>';
+  if (q.price < q.prev_close) return ' <span class="arrow red">\u2193</span>';
   return '';
 }
 
