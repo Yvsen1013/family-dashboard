@@ -917,10 +917,10 @@ function openPositionManager(catIdx) {
     var titleEl = document.querySelector('#positionOverlay .overlay-header h2');
     if (titleEl) titleEl.textContent = '⌖ 持仓变更 · ' + catName;
     let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
-      '<th>标的</th><th>市场</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
+      '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
     items.forEach((h, i) => {
       const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
-      html += '<tr><td>' + h.name + '</td><td>' + h.market + '</td>' +
+      html += '<tr><td>' + h.name + '</td>' +
         '<td class="num">' + formatCN(h.shares) + '</td>' +
         '<td class="num">' + costSym + NUM(h.cost) + '</td></tr>';
     });
