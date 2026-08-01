@@ -1101,9 +1101,11 @@ function priceDisplay(symbol, cost, value, shares) {
 }
 
 function renderMetrics(p) {
-  document.getElementById('totalAssets').textContent = CNY(p.total_assets, true);
-  document.getElementById('attackAssets').textContent = CNY(p.attack.total, true);
-  document.getElementById('attackRatio').textContent = '占总资产 ' + (p.attack.total / p.total_assets * 100).toFixed(1) + '%';
+  const attackTotal = computeAttackTotal();
+  const totalAssets = computeTotalAssets();
+  document.getElementById('totalAssets').textContent = CNY(totalAssets, true);
+  document.getElementById('attackAssets').textContent = CNY(attackTotal, true);
+  document.getElementById('attackRatio').textContent = '占总资产 ' + (attackTotal / totalAssets * 100).toFixed(1) + '%';
   const fcnGroup = p.attack.assets[2];
   let fcnMonthly = 0;
   let nearestDays = null, nearestUnderlying = '', nearestExpiryMonth = null, nearestExpiryYear = null;
@@ -1143,7 +1145,7 @@ function renderMetrics(p) {
   const defenseBase = p.defense.total - 270000; // 扣除静态黄金值
   const defenseDynamic = defenseBase + goldValue;
   document.getElementById('defenseAssets').textContent = CNY(defenseDynamic, true);
-  document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / p.total_assets * 100).toFixed(1) + '%';
+  document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / totalAssets * 100).toFixed(1) + '%';
   renderQimingVC();
 }
 
@@ -1151,7 +1153,7 @@ function renderQimingVC() {
   if (!portfolio || !portfolio.illiquid) return;
   const ill = portfolio.illiquid;
   document.getElementById('qimingValue').textContent = CNY(ill.value, true);
-  document.getElementById('qimingNote').innerHTML = '占总资产 ' + ill.ratio.toFixed(1) + '%<span class="mobile-block"> (不计入可配置资产)</span>';
+  document.getElementById('qimingNote').innerHTML = '占总资产 ' + (ill.value / computeTotalAssets() * 100).toFixed(1) + '%<span class="mobile-block"> (不计入可配置资产)</span>';
 }
 
 function showDefenseDetail() {
@@ -1167,7 +1169,7 @@ function showDefenseDetail() {
   let html = '';
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">
     <span style="font-size:16px;font-weight:600;color:var(--green);">防守总资产: ${CNY(defenseDynamic)}</span>
-    <span style="font-size:13px;color:var(--text-secondary);">占总资产 ${(defenseDynamic/portfolio.total_assets*100).toFixed(1)}%</span>
+    <span style="font-size:13px;color:var(--text-secondary);">占总资产 ${(defenseDynamic/computeTotalAssets()*100).toFixed(1)}%</span>
   </div>`;
 
   const groups = {};
@@ -1212,8 +1214,39 @@ function holdingValue(h) {
   return Math.round(val);
 }
 function holdingRatio(h, p) {
-  if (!h.shares || !h.symbol) return h.ratio;
-  return (holdingValue(h) / p.total_assets * 100).toFixed(2);
+  const total = computeTotalAssets();
+  return (holdingValue(h) / total * 100).toFixed(2);
+}
+
+// 动态计算进攻资产 = A股&港股实时市值 + 美股实时市值 + FCN总面值
+function computeAttackTotal() {
+  let total = 0;
+  if (!portfolio.attack || !portfolio.attack.assets) return total;
+  for (const group of portfolio.attack.assets) {
+    if (group.holdings) {
+      for (const h of group.holdings) {
+        total += holdingValue(h);
+      }
+    } else if (group.fcn_contracts) {
+      // FCN 没有 shares/price，使用静态 total_value
+      total += group.total_value || 0;
+    }
+  }
+  return total;
+}
+
+// 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明剩余
+function computeTotalAssets() {
+  const attackTotal = computeAttackTotal();
+  // 防守资产：含黄金动态价格
+  const goldQ = prices['GOLD'];
+  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
+  const goldValue = Math.round(300 * au9999PerGram * 1.08);
+  const defenseBase = (portfolio.defense ? portfolio.defense.total : 0) - 270000;
+  const defenseDynamic = defenseBase + goldValue;
+  // 启明剩余
+  const illiquidValue = (portfolio.illiquid ? portfolio.illiquid.value : 0);
+  return attackTotal + defenseDynamic + illiquidValue;
 }
 
 function renderPositions(p) {
@@ -1471,7 +1504,7 @@ function getCurrentTotal() {
   const goldValue = 300 * goldPerGram;
   const defenseBase = portfolio.defense.total - 270000;
   const defenseDynamic = defenseBase + goldValue;
-  return portfolio.attack.total + defenseDynamic + (portfolio.illiquid ? portfolio.illiquid.value : 0);
+  return computeAttackTotal() + defenseDynamic + (portfolio.illiquid ? portfolio.illiquid.value : 0);
 }
 
 function recordSnapshot() {
@@ -1483,7 +1516,7 @@ function recordSnapshot() {
   snapshots.push({
     date: today,
     total: Math.round(total),
-    attack: portfolio.attack.total,
+    attack: computeAttackTotal(),
     defense: (() => {
       const goldQ = prices['GOLD'];
       const au = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
