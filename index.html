@@ -452,8 +452,8 @@ tr:hover td { background: var(--surface-hover); }
 </div>
 
 <script>
-const FORMATTER = new Intl.NumberFormat('zh-CN');
-const CNY = (n) => n == null ? '---' : '¥' + FORMATTER.format(Math.round(n));
+const formatCN = (n) => { if (n == null) return '---'; const s = String(Math.round(n)); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
+const CNY = (n) => n == null ? '---' : '¥' + formatCN(n);
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
 
@@ -1314,7 +1314,7 @@ function showReturnsDetail() {
         html += `<div class="returns-row">
           <div><span class="returns-label">${p.label}</span><br><span class="returns-period">基准日：${p.period} · ${snapshots.length}条快照</span></div>
           <div style="text-align:right;">
-            <div class="${cls} returns-value">${sign}¥${FORMATTER.format(Math.round(r.amount))}</div>
+            <div class="${cls} returns-value">${sign}¥${formatCN(r.amount)}</div>
             <div class="${cls} returns-pct">${sign}${r.pct.toFixed(2)}%</div>
           </div>
         </div>`;
