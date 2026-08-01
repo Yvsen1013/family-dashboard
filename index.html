@@ -918,6 +918,23 @@ function tradeableHoldings(catIdx) {
   return result;
 }
 
+// 切换确认/撤销按钮状态
+function setConfirmButton(mode) {
+  var btn = document.getElementById('txConfirmBtn');
+  if (!btn) return;
+  if (mode === 'undo') {
+    btn.textContent = '撤销';
+    btn.setAttribute('onclick', 'undoLastTrade()');
+    btn.style.background = 'var(--surface)';
+    btn.style.color = 'var(--text-secondary)';
+  } else {
+    btn.textContent = '确认变更';
+    btn.setAttribute('onclick', 'confirmTrade()');
+    btn.style.background = 'var(--accent)';
+    btn.style.color = '#fff';
+  }
+}
+
 // 局部刷新持仓表格（不重建弹窗）
 function refreshPositionTable() {
   var wrap = document.getElementById('posMgrTableWrap');
@@ -975,7 +992,7 @@ function openPositionManager(catIdx) {
       '<div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">成交价</label>' +
       '<input id="txPrice" type="number" step="0.01" placeholder="价格" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>' +
       '<div style="flex:0 0 auto;"><label style="font-size:11px;color:var(--text-secondary);">&nbsp;</label>' +
-      '<button onclick="confirmTrade()" style="padding:8px 20px;background:var(--accent);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认变更</button></div>' +
+      '<button id="txConfirmBtn" onclick="confirmTrade()" style="padding:8px 20px;background:var(--accent);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认变更</button></div>' +
       '</div>' +
       '<div id="txPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>' +
       '</div>';
@@ -1084,10 +1101,9 @@ function confirmTrade() {
     if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
     savePortfolio(); loadPortfolio();
     refreshPositionTable();
-    // 不重建弹窗，直接在原地显示撤销按钮
     preview.style.display = 'block';
-    preview.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>'
-      + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+    preview.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>';
+    setConfirmButton('undo');
     clearTradeForm();
     loadPrices(true);
     return;
@@ -1108,10 +1124,9 @@ function confirmTrade() {
   portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].cost = newCost;
   savePortfolio(); loadPortfolio();
   refreshPositionTable();
-  // 不重建弹窗，直接在原地显示撤销按钮
   preview.style.display = 'block';
-  preview.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
-    + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+  preview.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>';
+  setConfirmButton('undo');
   clearTradeForm();
 }
 
@@ -1134,7 +1149,7 @@ function undoLastTrade() {
   lastUndo = null;
   savePortfolio(); loadPortfolio();
   refreshPositionTable();
-  // 不重建弹窗，直接在原地显示撤销结果
+  setConfirmButton('confirm');
   var pv = document.getElementById('txPreview');
   if (pv) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>'; }
 }
