@@ -990,7 +990,7 @@ function renderPositions(p) {
         <div class="pos-card-grid">
           <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
-          <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}${priceArrow(h.symbol)}</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${priceArrow(h.symbol)}${price}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">PE/合理</span><span class="pos-card-val"><span class="${peClass}">${pe}</span>/${h.target_pe || '---'}</span></div>
@@ -1029,7 +1029,7 @@ function renderPositions(p) {
       <div class="pos-card-grid">
         <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
-        <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}${priceArrow(h.symbol)}</span></div>
+        <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${priceArrow(h.symbol)}${price}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? '$' + NUM(h.cost) : '---'}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">PE/合理</span><span class="pos-card-val"><span class="${peClass}">${pe}</span>/${h.target_pe || '---'}</span></div>
