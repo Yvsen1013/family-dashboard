@@ -234,8 +234,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   h1 { font-size: 18px; }
   h2 { font-size: 14px; }
 
-  .header { flex-direction: column; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; }
-  .header-right { text-align: left; }
+  .header { flex-direction: row; align-items: center; gap: 8px; margin-bottom: 18px; padding-bottom: 14px; }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-right .update-time { font-size: 11px; }
+  .header-right .refresh-btn { font-size: 11px; padding: 4px 10px; margin-top: 4px; }
 
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
