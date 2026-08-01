@@ -519,6 +519,8 @@ async function fetchFX() {
 }
 
 // 内嵌持仓数据 (无需后端也可见)
+// 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
+const PORTFOLIO_DATA_VERSION = 2;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -879,8 +881,13 @@ function refreshPrices() { loadPrices(true); }
 
 function loadPortfolio() {
   const saved = localStorage.getItem('family_portfolio');
-  if (saved) {
-    try { portfolio = JSON.parse(saved); } catch(e) {}
+  const savedVer = localStorage.getItem('family_portfolio_ver');
+  // 版本不匹配 → 废弃旧缓存，使用最新内嵌数据
+  if (saved && savedVer && String(savedVer) === String(PORTFOLIO_DATA_VERSION)) {
+    try { portfolio = JSON.parse(saved); } catch(e) { portfolio = EMBEDDED_PORTFOLIO; }
+  } else {
+    portfolio = EMBEDDED_PORTFOLIO;
+    localStorage.removeItem('family_portfolio');
   }
   renderMetrics(portfolio);
   renderPositions(portfolio);
@@ -889,6 +896,7 @@ function loadPortfolio() {
 }
 function savePortfolio() {
   localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
+  localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
 }
 
 // ───────── 持仓变更管理 ─────────
