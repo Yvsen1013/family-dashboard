@@ -455,8 +455,9 @@ tr:hover td { background: var(--surface-hover); }
 </div>
 
 <script>
-const formatCN = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
-const CNY = (n) => n == null ? '---' : '¥' + formatCN(n);
+const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
+const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
+const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, true) : formatCNDec(n));
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
 
@@ -862,8 +863,8 @@ function priceDisplay(symbol, cost, value, shares) {
 }
 
 function renderMetrics(p) {
-  document.getElementById('totalAssets').textContent = CNY(p.total_assets);
-  document.getElementById('attackAssets').textContent = CNY(p.attack.total);
+  document.getElementById('totalAssets').textContent = CNY(p.total_assets, true);
+  document.getElementById('attackAssets').textContent = CNY(p.attack.total, true);
   document.getElementById('attackRatio').textContent = '占总资产 ' + (p.attack.total / p.total_assets * 100).toFixed(1) + '%';
   const fcnGroup = p.attack.assets[2];
   let fcnMonthly = 0;
@@ -890,7 +891,7 @@ function renderMetrics(p) {
       }
     }
   }
-  document.getElementById('fcnAssets').textContent = CNY(Math.round(fcnMonthly));
+  document.getElementById('fcnAssets').textContent = CNY(Math.round(fcnMonthly), true);
   if (nearestExpiryMonth !== null) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
@@ -903,7 +904,7 @@ function renderMetrics(p) {
   const goldValue = 300 * goldPerGram;
   const defenseBase = p.defense.total - 270000; // 扣除静态黄金值
   const defenseDynamic = defenseBase + goldValue;
-  document.getElementById('defenseAssets').textContent = CNY(defenseDynamic);
+  document.getElementById('defenseAssets').textContent = CNY(defenseDynamic, true);
   document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / p.total_assets * 100).toFixed(1) + '%';
   renderQimingVC();
 }
@@ -911,7 +912,7 @@ function renderMetrics(p) {
 function renderQimingVC() {
   if (!portfolio || !portfolio.illiquid) return;
   const ill = portfolio.illiquid;
-  document.getElementById('qimingValue').textContent = CNY(ill.value);
+  document.getElementById('qimingValue').textContent = CNY(ill.value, true);
   document.getElementById('qimingNote').innerHTML = '占总资产 ' + ill.ratio.toFixed(1) + '%<span class="mobile-block"> (不计入可配置资产)</span>';
 }
 
