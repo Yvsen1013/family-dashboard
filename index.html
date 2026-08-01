@@ -918,6 +918,23 @@ function tradeableHoldings(catIdx) {
   return result;
 }
 
+// 局部刷新持仓表格（不重建弹窗）
+function refreshPositionTable() {
+  var wrap = document.getElementById('posMgrTableWrap');
+  if (!wrap) return;
+  const items = tradeableHoldings(currentCatIdx);
+  let html = '<table class="pos-mgr-table"><thead><tr>' +
+    '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
+  items.forEach((h) => {
+    const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+    html += '<tr><td>' + h.name + '</td>' +
+      '<td class="num">' + formatCN(h.shares) + '</td>' +
+      '<td class="num">' + costSym + NUM(h.cost) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
 function openPositionManager(catIdx) {
   var ov = document.getElementById('positionOverlay');
   var pd = document.getElementById('positionDetail');
@@ -928,7 +945,7 @@ function openPositionManager(catIdx) {
     const catName = (catIdx !== undefined && portfolio.attack.assets[catIdx]) ? portfolio.attack.assets[catIdx].category : '全部持仓';
     var titleEl = document.querySelector('#positionOverlay .overlay-header h2');
     if (titleEl) titleEl.textContent = '持仓变更 · ' + catName;
-    let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
+    let html = '<div id="posMgrTableWrap" class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
       '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
     items.forEach((h) => {
       const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
@@ -1066,6 +1083,7 @@ function confirmTrade() {
     var qtCode = buildQtCode(symbol, market);
     if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
     savePortfolio(); loadPortfolio();
+    refreshPositionTable();
     // 不重建弹窗，直接在原地显示撤销按钮
     preview.style.display = 'block';
     preview.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>'
@@ -1089,6 +1107,7 @@ function confirmTrade() {
   portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].shares = newShares;
   portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].cost = newCost;
   savePortfolio(); loadPortfolio();
+  refreshPositionTable();
   // 不重建弹窗，直接在原地显示撤销按钮
   preview.style.display = 'block';
   preview.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
@@ -1114,6 +1133,7 @@ function undoLastTrade() {
   else { if (cat.holdings[lastUndo.holdIdx]) { cat.holdings[lastUndo.holdIdx].shares = lastUndo.oldShares; cat.holdings[lastUndo.holdIdx].cost = lastUndo.oldCost; } }
   lastUndo = null;
   savePortfolio(); loadPortfolio();
+  refreshPositionTable();
   // 不重建弹窗，直接在原地显示撤销结果
   var pv = document.getElementById('txPreview');
   if (pv) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>'; }
