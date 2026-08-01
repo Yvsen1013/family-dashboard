@@ -1143,7 +1143,7 @@ function getFullQtCodes() { return [...Object.values(QT_MAP), ...Object.values(D
 
 function buildPortfolioSymbol(code, market) {
   const m = market.toUpperCase();
-  if (m === 'HK') return code + '.HK';
+  if (m === 'HK') return String(parseInt(code, 10)).padStart(4, '0') + '.HK';
   if (m === 'SH') return code + '.SS';
   if (m === 'SZ') return code + '.SZ';
   if (m === 'US') { const dot = code.indexOf('.'); return (dot > 0 ? code.substring(0, dot) : code).toUpperCase(); }
@@ -1151,7 +1151,7 @@ function buildPortfolioSymbol(code, market) {
 }
 function buildQtCode(symbol, market) {
   const m = market.toUpperCase();
-  if (m === 'HK') return 'hk' + symbol.replace('.HK','');
+  if (m === 'HK') return 'hk' + String(parseInt(symbol.replace('.HK',''), 10)).padStart(5, '0');
   if (m === 'SH') return 'sh' + symbol.replace('.SS','');
   if (m === 'SZ') return 'sz' + symbol.replace('.SZ','');
   if (m === 'US') return 'us' + symbol;

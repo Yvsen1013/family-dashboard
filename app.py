@@ -303,7 +303,7 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
                         # 构建 symbol
                         mkt = market.upper()
                         if mkt == "HK":
-                            symbol = code + ".HK"
+                            symbol = str(int(code)).zfill(4) + ".HK"
                         elif mkt == "SH":
                             symbol = code + ".SS"
                         elif mkt == "SZ":
