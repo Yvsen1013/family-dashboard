@@ -496,20 +496,20 @@ tr:hover td { background: var(--surface-hover); }
     </div>
     <div class="overlay-body">
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1 1 200px;"><label style="font-size:11px;color:var(--text-secondary);">标的名称</label>
-          <input id="fcnUnderlying" type="text" placeholder="如 腾讯控股" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
-        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">股票代码</label>
-          <input id="fcnSymbol" type="text" placeholder="如 0700.HK" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
+        <div style="flex:1 1 280px;position:relative;">
+          <label style="font-size:11px;color:var(--text-secondary);">搜索标的（港股/美股）</label>
+          <input id="fcnStockSearch" type="text" placeholder="输入名称或代码..." autocomplete="off" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">
+          <div id="fcnStockResults" style="position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:2px solid var(--border);border-top:none;border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+        </div>
+        <input type="hidden" id="fcnUnderlying"><input type="hidden" id="fcnSymbol">
         <div style="flex:1 1 140px;"><label style="font-size:11px;color:var(--text-secondary);">面额 (¥)</label>
           <input id="fcnValue" type="number" placeholder="如 1000000" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
-        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">行权价 (HK$)</label>
+        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">行权价</label>
           <input id="fcnStrike" type="number" step="0.01" placeholder="如 421.00" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
         <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">票息率 (%)</label>
           <input id="fcnCoupon" type="number" step="0.0001" placeholder="如 1.9177" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
         <div style="flex:1 1 150px;"><label style="font-size:11px;color:var(--text-secondary);">到期日</label>
           <input id="fcnExpiry" type="date" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
-        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">成本 (HK$)</label>
-          <input id="fcnCost" type="number" step="0.01" placeholder="如 421.00" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
       </div>
       <div id="fcnPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>
       <div style="margin-top:16px;text-align:right;">
@@ -1195,16 +1195,66 @@ function closePositionManager() {
 
 // ───────── FCN 管理 ─────────
 
+let fcnSearchTimer = null;
+
+async function doFcnSearch(keyword) {
+  var rd = document.getElementById('fcnStockResults'); if (!rd) return;
+  rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">搜索中...</div>';
+  rd.style.display = 'block';
+  var results = await searchStocks(keyword);
+  // FCN 仅支持港股和美股
+  results = results.filter(function(r) { return r.market === 'HK' || r.market === 'US'; });
+  if (!results.length) { rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">未找到匹配的股票</div>'; return; }
+  var h = '';
+  results.forEach(function(r) {
+    h += '<div onclick="selectFcnStock(\'' + r.symbol.replace(/'/g,"\\'") + '\',\'' + r.name.replace(/'/g,"\\'") + '\')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background=\'var(--surface-hover)\'" onmouseout="this.style.background=\'\'">' +
+      '<span>' + r.name + '</span><span style="font-size:11px;color:var(--text-secondary);">' + r.market + ' · ' + r.symbol + '</span></div>';
+  });
+  rd.innerHTML = h;
+}
+
+function selectFcnStock(symbol, name) {
+  document.getElementById('fcnUnderlying').value = name;
+  document.getElementById('fcnSymbol').value = symbol;
+  document.getElementById('fcnStockSearch').value = name + ' (' + symbol + ')';
+  document.getElementById('fcnStockResults').style.display = 'none';
+}
+
 function openFcnManager() {
   var ov = document.getElementById('fcnOverlay');
   if (!ov) return;
   // 清空表单
-  ['fcnUnderlying','fcnSymbol','fcnValue','fcnStrike','fcnCoupon','fcnExpiry','fcnCost'].forEach(function(id) {
+  ['fcnStockSearch','fcnValue','fcnStrike','fcnCoupon','fcnExpiry'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  ['fcnUnderlying','fcnSymbol'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var rd = document.getElementById('fcnStockResults'); if (rd) rd.style.display = 'none';
   var pv = document.getElementById('fcnPreview'); if (pv) { pv.style.display = 'none'; pv.innerHTML = ''; }
   setFcnButton('confirm');
   ov.style.display = 'flex';
+
+  // 绑定搜索
+  var si = document.getElementById('fcnStockSearch');
+  if (si) {
+    si.addEventListener('input', function() {
+      clearTimeout(fcnSearchTimer);
+      var kw = this.value.trim();
+      if (kw.length < 1) { document.getElementById('fcnStockResults').style.display = 'none'; return; }
+      fcnSearchTimer = setTimeout(function() { doFcnSearch(kw); }, 300);
+    });
+    si.addEventListener('focus', function() {
+      if (this.value.trim().length >= 1) doFcnSearch(this.value.trim());
+    });
+  }
+  // 点击弹窗外关闭搜索下拉
+  setTimeout(function() {
+    document.addEventListener('click', function escFcnSearch(e) {
+      var r = document.getElementById('fcnStockResults');
+      if (r && e.target.id !== 'fcnStockSearch' && !r.contains(e.target)) r.style.display = 'none';
+    }, { once: true });
+  }, 100);
 }
 
 function closeFcnManager() {
@@ -1235,10 +1285,9 @@ function confirmAddFcn() {
   var strike = parseFloat(document.getElementById('fcnStrike').value);
   var coupon = parseFloat(document.getElementById('fcnCoupon').value);
   var expiry = document.getElementById('fcnExpiry').value;
-  var cost = parseFloat(document.getElementById('fcnCost').value);
   var pv = document.getElementById('fcnPreview');
 
-  if (!underlying || !symbol || isNaN(value) || value <= 0 || isNaN(strike) || strike <= 0 || isNaN(coupon) || !expiry || isNaN(cost)) {
+  if (!underlying || !symbol || isNaN(value) || value <= 0 || isNaN(strike) || strike <= 0 || isNaN(coupon) || !expiry) {
     pv.style.display = 'block';
     pv.innerHTML = '<span style="color:var(--red);">请填写所有字段，确保完整且有效</span>';
     return;
@@ -1251,7 +1300,7 @@ function confirmAddFcn() {
   var newId = 'No.' + (fcnGroup.fcn_contracts.length + 1);
   var newContract = {
     id: newId, underlying: underlying, symbol: symbol, value: value,
-    ratio: 0, strike: strike, coupon_rate: coupon, expiry: expiry, cost: cost
+    ratio: 0, strike: strike, coupon_rate: coupon, expiry: expiry, cost: strike
   };
   fcnGroup.fcn_contracts.push(newContract);
   fcnGroup.total_value = fcnGroup.fcn_contracts.reduce(function(s, c) { return s + c.value; }, 0);
@@ -1259,8 +1308,9 @@ function confirmAddFcn() {
   lastFcnUndo = { idx: fcnGroup.fcn_contracts.length - 1 };
   savePortfolio(); loadPortfolio();
 
-  // 注册行情代码
-  var qtCode = buildQtCode(symbol, 'HK');
+  // 注册行情代码（根据symbol判断市场）
+  var fcnMarket = symbol.endsWith('.HK') ? 'HK' : 'US';
+  var qtCode = buildQtCode(symbol, fcnMarket);
   if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
 
   pv.style.display = 'block';
@@ -1692,6 +1742,7 @@ function renderFCN(p) {
     const statusLabel = aboveStrike
       ? '安全 (现价高于行权价 ' + margin.toFixed(1) + '%)'
       : '危险 (现价低于行权价)';
+    const curSym = c.symbol.endsWith('.HK') ? 'HK$' : '$';
 
     if (!aboveStrike && currentPrice) {
       hasWarning = true;
@@ -1705,8 +1756,8 @@ function renderFCN(p) {
       </div>
       <div class="fcn-grid">
         <div class="fcn-item"><span class="fcn-label">面额</span><span class="fcn-val">${CNY(c.value)}</span></div>
-        <div class="fcn-item"><span class="fcn-label">行权价</span><span class="fcn-val">HK$${NUM(c.strike)}</span></div>
-        <div class="fcn-item"><span class="fcn-label">现价</span><span class="fcn-val">${currentPrice ? 'HK$'+NUM(currentPrice) : '<span class="price-loading">加载中</span>'}</span></div>
+        <div class="fcn-item"><span class="fcn-label">行权价</span><span class="fcn-val">${curSym}${NUM(c.strike)}</span></div>
+        <div class="fcn-item"><span class="fcn-label">现价</span><span class="fcn-val">${currentPrice ? curSym+NUM(currentPrice) : '<span class="price-loading">加载中</span>'}</span></div>
         <div class="fcn-item"><span class="fcn-label">票息率</span><span class="fcn-val">${c.coupon_rate}%</span></div>
         <div class="fcn-item"><span class="fcn-label">到期日</span><span class="fcn-val">${c.expiry}</span></div>
       </div>
