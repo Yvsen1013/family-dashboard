@@ -833,7 +833,7 @@ function safeFloat(s) { const n = parseFloat(s); return isNaN(n) ? null : n; }
 
 async function loadPrices(force) {
   try {
-    const url = 'https://qt.gtimg.cn/q=' + QT_CODES;
+    const url = 'https://qt.gtimg.cn/q=' + getFullQtCodes();
     const resp = await fetch(url);
     const buf = await resp.arrayBuffer();
     const text = new TextDecoder('gbk').decode(buf);
@@ -880,6 +880,7 @@ async function loadPrices(force) {
 function refreshPrices() { loadPrices(true); }
 
 function loadPortfolio() {
+  loadDynamicQtMap();
   const saved = localStorage.getItem('family_portfolio');
   const savedVer = localStorage.getItem('family_portfolio_ver');
   // 版本不匹配 → 废弃旧缓存，使用最新内嵌数据
@@ -917,7 +918,7 @@ function tradeableHoldings(catIdx) {
 function openPositionManager(catIdx) {
   var ov = document.getElementById('positionOverlay');
   var pd = document.getElementById('positionDetail');
-  if (!ov || !pd) { alert('找不到弹窗元素! ov=' + !!ov + ' pd=' + !!pd); return; }
+  if (!ov || !pd) { alert('找不到弹窗元素!'); return; }
   try {
     currentCatIdx = catIdx;
     const items = tradeableHoldings(catIdx);
@@ -926,7 +927,7 @@ function openPositionManager(catIdx) {
     if (titleEl) titleEl.textContent = '⌖ 持仓变更 · ' + catName;
     let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
       '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
-    items.forEach((h, i) => {
+    items.forEach((h) => {
       const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
       html += '<tr><td>' + h.name + '</td>' +
         '<td class="num">' + formatCN(h.shares) + '</td>' +
@@ -934,16 +935,18 @@ function openPositionManager(catIdx) {
     });
     html += '</tbody></table></div>';
 
-    // 交易表单
+    // 交易表单：搜索框替代 select
     html += '<div style="margin-top:24px;border-top:2px dashed var(--border);padding-top:16px;">' +
       '<h3 style="margin-bottom:12px;">新增交易记录</h3>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
-      '<div style="flex:1 1 160px;"><label style="font-size:11px;color:var(--text-secondary);">股票</label>' +
-      '<select id="txStock" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">';
-    items.forEach((h, i) => {
-      html += '<option value="' + i + '">' + h.name + '</option>';
-    });
-    html += '</select></div>' +
+      '<div style="flex:1 1 220px;position:relative;">' +
+      '<label style="font-size:11px;color:var(--text-secondary);">搜索股票</label>' +
+      '<input id="txStockSearch" type="text" placeholder="输入名称或代码..." autocomplete="off" ' +
+      'style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">' +
+      '<div id="txStockResults" style="position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);' +
+      'border:2px solid var(--border);border-top:none;border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>' +
+      '</div>' +
+      '<input type="hidden" id="txStockSymbol"><input type="hidden" id="txStockName"><input type="hidden" id="txStockMarket"><input type="hidden" id="txStockIsNew" value="0">' +
       '<div style="flex:1 1 100px;"><label style="font-size:11px;color:var(--text-secondary);">操作</label>' +
       '<select id="txAction" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">' +
       '<option value="buy">买入</option><option value="sell">卖出</option></select></div>' +
@@ -960,103 +963,149 @@ function openPositionManager(catIdx) {
     pd.innerHTML = html;
     ov.style.display = 'flex';
 
-    // 选中股票时自动填入现价
-    var txStockEl = document.getElementById('txStock');
-    if (txStockEl) {
-      txStockEl.addEventListener('change', autoFillPrice);
-      autoFillPrice();
+    // 绑定搜索
+    var si = document.getElementById('txStockSearch');
+    if (si) {
+      si.addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        var kw = this.value.trim();
+        if (kw.length < 1) { document.getElementById('txStockResults').style.display = 'none'; return; }
+        searchTimer = setTimeout(() => doStockSearch(kw), 300);
+      });
+      si.addEventListener('focus', function() {
+        if (this.value.trim().length >= 1) doStockSearch(this.value.trim());
+      });
     }
+    // 点击弹窗外关闭搜索下拉
+    setTimeout(() => {
+      document.addEventListener('click', function escSearch(e) {
+        var r = document.getElementById('txStockResults');
+        if (r && e.target.id !== 'txStockSearch' && !r.contains(e.target)) r.style.display = 'none';
+      }, { once: true });
+    }, 100);
   } catch(err) {
     pd.innerHTML = '<div style="color:red;padding:20px;"><h3>错误信息</h3><pre>' + (err.stack || err.message || err) + '</pre></div>';
     ov.style.display = 'flex';
   }
 }
 
+// 执行搜索并渲染下拉
+async function doStockSearch(keyword) {
+  var rd = document.getElementById('txStockResults'); if (!rd) return;
+  rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">搜索中...</div>';
+  rd.style.display = 'block';
+  var results = await searchStocks(keyword);
+  if (!results.length) { rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">未找到匹配的股票</div>'; return; }
+  var h = '';
+  results.forEach(function(r) {
+    h += '<div onclick="selectStock(\'' + r.symbol.replace(/'/g,"\\'") + '\',\'' + r.name.replace(/'/g,"\\'") + '\',\'' + r.market + '\')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background=\'var(--surface-hover)\'" onmouseout="this.style.background=\'\'">' +
+      '<span>' + r.name + '</span><span style="font-size:11px;color:var(--text-secondary);">' + r.market + ' · ' + r.symbol + '</span></div>';
+  });
+  rd.innerHTML = h;
+}
+
+// 选中搜索结果
+function selectStock(symbol, name, market) {
+  document.getElementById('txStockSymbol').value = symbol;
+  document.getElementById('txStockName').value = name;
+  document.getElementById('txStockMarket').value = market;
+  document.getElementById('txStockSearch').value = name + ' (' + symbol + ')';
+  document.getElementById('txStockResults').style.display = 'none';
+  var existing = findHoldingBySymbol(symbol, currentCatIdx);
+  if (existing) {
+    document.getElementById('txStockIsNew').value = '0';
+    document.getElementById('txAction').value = 'sell';
+  } else {
+    document.getElementById('txStockIsNew').value = '1';
+    document.getElementById('txAction').value = 'buy';
+  }
+  autoFillPrice();
+}
+
 let currentCatIdx = null;
+let lastUndo = null;
 
 function autoFillPrice() {
-  const items = tradeableHoldings(currentCatIdx);
-  const idx = parseInt(document.getElementById('txStock').value);
-  const h = items[idx];
-  if (!h) return;
-  const q = getPrice(h.symbol);
+  var symbol = document.getElementById('txStockSymbol')?.value;
+  if (!symbol) return;
+  var q = getPrice(symbol);
   if (q && q.price) document.getElementById('txPrice').value = q.price;
 }
 
-let lastUndo = null; // { catIdx, holdIdx, oldShares, oldCost }
-
 function confirmTrade() {
-  const items = tradeableHoldings(currentCatIdx);
-  const idx = parseInt(document.getElementById('txStock').value);
-  const action = document.getElementById('txAction').value;
-  const qty = parseInt(document.getElementById('txQty').value);
-  const price = parseFloat(document.getElementById('txPrice').value);
-  const h = items[idx];
-  const preview = document.getElementById('txPreview');
+  var symbol = document.getElementById('txStockSymbol').value;
+  var name = document.getElementById('txStockName').value;
+  var market = document.getElementById('txStockMarket').value;
+  var isNew = document.getElementById('txStockIsNew').value === '1';
+  var action = document.getElementById('txAction').value;
+  var qty = parseInt(document.getElementById('txQty').value);
+  var price = parseFloat(document.getElementById('txPrice').value);
+  var preview = document.getElementById('txPreview');
 
-  if (!h || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) {
+  if (!symbol || !name || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) {
     preview.style.display = 'block';
-    preview.innerHTML = '<span style="color:var(--red);">请填写完整的数量与成交价</span>';
+    preview.innerHTML = '<span style="color:var(--red);">请搜索选择股票并填写完整的数量与成交价</span>';
     return;
   }
 
-  if (action === 'sell' && qty > h.shares) {
-    preview.style.display = 'block';
-    preview.innerHTML = '<span style="color:var(--red);">卖出数量超过当前持仓 ' + formatCN(h.shares) + ' 股</span>';
+  // ───── 新增股票 ─────
+  if (isNew) {
+    if (action === 'sell') { preview.style.display = 'block'; preview.innerHTML = '<span style="color:var(--red);">该股票不在持仓中，无法卖出</span>'; return; }
+    var catIdx = getAssetGroupByMarket(market);
+    var cat = portfolio.attack.assets[catIdx];
+    if (!cat.holdings) cat.holdings = [];
+    lastUndo = { catIdx: catIdx, holdIdx: cat.holdings.length, oldShares: 0, oldCost: 0, isNewStock: true };
+    var fxRate = market === 'HK' ? FX_HKD_CNY : market === 'US' ? FX_USD_CNY : 1;
+    cat.holdings.push({ name: name, symbol: symbol, market: market, shares: qty, cost: price, value: Math.round(qty * price * fxRate), ratio: 0 });
+    var qtCode = buildQtCode(symbol, market);
+    if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
+    savePortfolio(); loadPortfolio();
+    openPositionManager(currentCatIdx);
+    var fp = document.getElementById('txPreview');
+    if (fp) {
+      fp.style.display = 'block';
+      fp.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>'
+        + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+    }
+    loadPrices(true); // 触发价格刷新获取新股行情
     return;
   }
 
-  // 保存撤销快照
+  // ───── 已有持仓的买卖 ─────
+  var h = findHoldingBySymbol(symbol, currentCatIdx);
+  if (!h) { preview.style.display = 'block'; preview.innerHTML = '<span style="color:var(--red);">未找到该持仓</span>'; return; }
+  if (action === 'sell' && qty > h.shares) { preview.style.display = 'block'; preview.innerHTML = '<span style="color:var(--red);">卖出数量超过当前持仓 ' + formatCN(h.shares) + ' 股</span>'; return; }
+
   lastUndo = { catIdx: h.catIdx, holdIdx: h.holdIdx, oldShares: h.shares, oldCost: h.cost };
+  var curSym = symbol.includes('.HK') ? 'HK$' : market === 'US' ? '$' : '¥';
+  var newShares, newCost;
+  if (action === 'buy') { newShares = h.shares + qty; newCost = (h.shares * h.cost + qty * price) / newShares; }
+  else { newShares = h.shares - qty; newCost = (newShares > 0) ? (h.shares * h.cost - qty * price) / newShares : 0; }
 
-  const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
-  let newShares, newCost;
-  if (action === 'buy') {
-    newShares = h.shares + qty;
-    newCost = (h.shares * h.cost + qty * price) / newShares;
-  } else {
-    newShares = h.shares - qty;
-    // 卖出后均价 = (旧总成本 - 卖出回收) / 剩余股数
-    // 卖出价高于均价则剩余均价下降，反之上升
-    newCost = (newShares > 0) ? (h.shares * h.cost - qty * price) / newShares : 0;
-  }
+  portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].shares = newShares;
+  portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].cost = newCost;
+  savePortfolio(); loadPortfolio();
+  openPositionManager(currentCatIdx);
 
-  // 直接应用变更
-  const cat = portfolio.attack.assets[h.catIdx];
-  cat.holdings[h.holdIdx].shares = newShares;
-  cat.holdings[h.holdIdx].cost = newCost;
-
-  savePortfolio();
-  loadPortfolio();
-  openPositionManager(currentCatIdx); // 刷新弹窗（会重建整个 DOM）
-
-  // openPositionManager 重建了 DOM，需要重新获取 #txPreview 元素
-  const freshPreview = document.getElementById('txPreview');
-  if (freshPreview) {
-    freshPreview.style.display = 'block';
-    freshPreview.innerHTML =
-      '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，'
-      + '均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
+  fp = document.getElementById('txPreview');
+  if (fp) {
+    fp.style.display = 'block';
+    fp.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
       + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
   }
 }
 
 function undoLastTrade() {
   if (!lastUndo || !portfolio) return;
-  const { catIdx, holdIdx, oldShares, oldCost } = lastUndo;
-  const cat = portfolio.attack.assets[catIdx];
-  if (!cat || !cat.holdings[holdIdx]) return;
-  cat.holdings[holdIdx].shares = oldShares;
-  cat.holdings[holdIdx].cost = oldCost;
+  var cat = portfolio.attack.assets[lastUndo.catIdx];
+  if (!cat || !cat.holdings) return;
+  if (lastUndo.isNewStock) { cat.holdings.splice(lastUndo.holdIdx, 1); }
+  else { if (cat.holdings[lastUndo.holdIdx]) { cat.holdings[lastUndo.holdIdx].shares = lastUndo.oldShares; cat.holdings[lastUndo.holdIdx].cost = lastUndo.oldCost; } }
   lastUndo = null;
-  savePortfolio();
-  loadPortfolio();
+  savePortfolio(); loadPortfolio();
   openPositionManager(currentCatIdx);
-  const preview = document.getElementById('txPreview');
-  if (preview) {
-    preview.style.display = 'block';
-    preview.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>';
-  }
+  var pv = document.getElementById('txPreview');
+  if (pv) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>'; }
 }
 
 function closePositionManager() {
@@ -1064,6 +1113,71 @@ function closePositionManager() {
   if (ov) ov.style.display = 'none';
   currentCatIdx = null;
   lastUndo = null;
+}
+
+// ───────── 动态股票搜索 ─────────
+
+// 动态添加的股票 QT API 映射
+let DYNAMIC_QT_MAP = {};
+
+function loadDynamicQtMap() {
+  try { const s = localStorage.getItem('dynamic_qt_map'); if (s) DYNAMIC_QT_MAP = JSON.parse(s); } catch(e) {}
+}
+function saveDynamicQtMap() { localStorage.setItem('dynamic_qt_map', JSON.stringify(DYNAMIC_QT_MAP)); }
+function getFullQtCodes() { return [...Object.values(QT_MAP), ...Object.values(DYNAMIC_QT_MAP)].join(','); }
+
+function buildPortfolioSymbol(code, market) {
+  const m = market.toUpperCase();
+  if (m === 'HK') return code + '.HK';
+  if (m === 'SH') return code + '.SS';
+  if (m === 'SZ') return code + '.SZ';
+  if (m === 'US') { const dot = code.indexOf('.'); return (dot > 0 ? code.substring(0, dot) : code).toUpperCase(); }
+  return null;
+}
+function buildQtCode(symbol, market) {
+  const m = market.toUpperCase();
+  if (m === 'HK') return 'hk' + symbol.replace('.HK','');
+  if (m === 'SH') return 'sh' + symbol.replace('.SS','');
+  if (m === 'SZ') return 'sz' + symbol.replace('.SZ','');
+  if (m === 'US') return 'us' + symbol;
+  return null;
+}
+function getAssetGroupByMarket(market) { return market === 'US' ? 1 : 0; }
+function findHoldingBySymbol(symbol, catIdx) {
+  for (let ci = 0; ci < portfolio.attack.assets.length; ci++) {
+    if (catIdx !== undefined && catIdx !== ci) continue;
+    const cat = portfolio.attack.assets[ci]; if (!cat.holdings) continue;
+    for (let hi = 0; hi < cat.holdings.length; hi++) {
+      const h = cat.holdings[hi];
+      if (h.symbol === symbol && h.shares > 0) return { ...h, catIdx: ci, holdIdx: hi };
+    }
+  }
+  return null;
+}
+
+let searchTimer = null, searchCache = {};
+async function searchStocks(keyword) {
+  if (keyword.length < 1) return [];
+  const k = keyword.trim().toLowerCase();
+  if (searchCache[k]) return searchCache[k];
+  try {
+    const resp = await fetch('https://smartbox.gtimg.cn/s3/?q=' + encodeURIComponent(keyword) + '&t=all');
+    const text = await resp.text();
+    const match = text.match(/v_hint="([^"]*)"/);
+    if (!match) return [];
+    const results = [], seen = new Set();
+    for (const entry of match[1].split('^')) {
+      if (!entry.trim()) continue;
+      const f = entry.split('~'); if (f.length < 5) continue;
+      const [market, code, rawName, , type] = f;
+      if (!type || (!type.startsWith('GP') && type !== 'GP')) continue;
+      const sym = buildPortfolioSymbol(code, market);
+      if (!sym || seen.has(sym)) continue; seen.add(sym);
+      results.push({ name: rawName.replace(/\\u([\dA-Fa-f]{4})/g, (_,h) => String.fromCharCode(parseInt(h,16))), symbol: sym, market: market.toUpperCase() });
+      if (results.length >= 15) break;
+    }
+    searchCache[k] = results; return results;
+  } catch(e) { console.warn('搜索失败:', e.message); return []; }
 }
 
 function getPrice(symbol) {
