@@ -1367,6 +1367,7 @@ function closeDefenseDetail() {
 
 // 动态市值计算：若存在 shares 则用 shares × 实时股价 × 汇率 → RMB
 function holdingValue(h) {
+  if (h.shares === 0) return 0;  // 全部卖出后市值为0
   if (!h.shares || !h.symbol) return h.value;
   const q = getPrice(h.symbol);
   if (!q || !q.price) return h.value;
@@ -1419,6 +1420,7 @@ function renderPositions(p) {
   const hk = p.attack.assets[0];
   let hkHtml = '', hkMobile = '';
   for (const h of hk.holdings) {
+    if (h.shares === 0) continue; // 全部卖出的股票不显示
     const val = holdingValue(h);
     const rat = holdingRatio(h, p);
     if (!h.symbol) {
@@ -1481,6 +1483,7 @@ function renderPositions(p) {
   const us = p.attack.assets[1];
   let usHtml = '', usMobile = '';
   for (const h of us.holdings) {
+    if (h.shares === 0) continue; // 全部卖出的股票不显示
     const val = holdingValue(h);
     const rat = holdingRatio(h, p);
     const { price, pe, peVal, pnl } = priceDisplay(h.symbol, h.cost, h.value);
