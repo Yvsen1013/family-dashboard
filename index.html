@@ -1028,14 +1028,17 @@ function confirmTrade() {
 
   savePortfolio();
   loadPortfolio();
-  openPositionManager(currentCatIdx); // 刷新弹窗
+  openPositionManager(currentCatIdx); // 刷新弹窗（会重建整个 DOM）
 
-  // 显示结果 + 撤销按钮
-  preview.style.display = 'block';
-  preview.innerHTML =
-    '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，'
-    + '均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
-    + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+  // openPositionManager 重建了 DOM，需要重新获取 #txPreview 元素
+  const freshPreview = document.getElementById('txPreview');
+  if (freshPreview) {
+    freshPreview.style.display = 'block';
+    freshPreview.innerHTML =
+      '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，'
+      + '均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
+      + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+  }
 }
 
 function undoLastTrade() {
