@@ -1161,21 +1161,12 @@ async function searchStocks(keyword) {
   const k = keyword.trim().toLowerCase();
   if (searchCache[k]) return searchCache[k];
   try {
-    const resp = await fetch('https://smartbox.gtimg.cn/s3/?q=' + encodeURIComponent(keyword) + '&t=all');
-    const text = await resp.text();
-    const match = text.match(/v_hint="([^"]*)"/);
-    if (!match) return [];
-    const results = [], seen = new Set();
-    for (const entry of match[1].split('^')) {
-      if (!entry.trim()) continue;
-      const f = entry.split('~'); if (f.length < 5) continue;
-      const [market, code, rawName, , type] = f;
-      if (!type || (!type.startsWith('GP') && type !== 'GP')) continue;
-      const sym = buildPortfolioSymbol(code, market);
-      if (!sym || seen.has(sym)) continue; seen.add(sym);
-      results.push({ name: rawName.replace(/\\u([\dA-Fa-f]{4})/g, (_,h) => String.fromCharCode(parseInt(h,16))), symbol: sym, market: market.toUpperCase() });
-      if (results.length >= 15) break;
-    }
+    // 通过后端代理（backend :8899，已设置 CORS）
+    const resp = await fetch('http://127.0.0.1:8899/api/search?q=' + encodeURIComponent(keyword));
+    const data = await resp.json();
+    const results = (data.results || []).map(r => ({
+      name: r.name, symbol: r.symbol, market: r.market
+    }));
     searchCache[k] = results; return results;
   } catch(e) { console.warn('搜索失败:', e.message); return []; }
 }

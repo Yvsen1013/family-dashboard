@@ -274,6 +274,61 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
                 "quotes_cached": len(price_cache)
             })
 
+        elif path == "/api/search":
+            keyword = qs.get("q", [""])[0]
+            if not keyword or len(keyword) < 1:
+                self.send_json({"results": []})
+                return
+            try:
+                req = urllib.request.Request(
+                    f"https://smartbox.gtimg.cn/s3/?q={urllib.parse.quote(keyword)}&t=all",
+                    headers={"User-Agent": "Mozilla/5.0", "Referer": "https://finance.qq.com"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    text = resp.read().decode("utf-8", errors="replace")
+                # 解析结果: v_hint="market~code~name~pinyin~type^..."
+                match = re.search(r'v_hint="([^"]*)"', text)
+                results = []
+                if match:
+                    seen = set()
+                    for entry in match.group(1).split("^"):
+                        if not entry.strip():
+                            continue
+                        fields = entry.split("~")
+                        if len(fields) < 5:
+                            continue
+                        market, code, raw_name, _, typ = fields[0], fields[1], fields[2], fields[3], fields[4]
+                        if not typ or (not typ.startswith("GP") and typ != "GP"):
+                            continue
+                        # 构建 symbol
+                        mkt = market.upper()
+                        if mkt == "HK":
+                            symbol = code + ".HK"
+                        elif mkt == "SH":
+                            symbol = code + ".SS"
+                        elif mkt == "SZ":
+                            symbol = code + ".SZ"
+                        elif mkt == "US":
+                            dot = code.find(".")
+                            symbol = (code[:dot] if dot > 0 else code).upper()
+                        else:
+                            continue
+                        if symbol in seen:
+                            continue
+                        seen.add(symbol)
+                        # Unicode 反转义
+                        name = raw_name
+                        try:
+                            name = raw_name.encode().decode("unicode_escape")
+                        except:
+                            pass
+                        results.append({"name": name, "symbol": symbol, "market": mkt})
+                        if len(results) >= 15:
+                            break
+                self.send_json({"results": results})
+            except Exception as e:
+                self.send_json({"results": [], "error": str(e)})
+
         elif path in ("/", "/index.html"):
             # 优先使用 index.html，回退到模板
             for fname in ("index.html", "templates/dashboard.html"):
