@@ -491,6 +491,33 @@ const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, tr
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
 
+// ───────── 汇率 ─────────
+// 默认值（离线fallback），页面加载后自动获取实时汇率覆盖
+let FX_HKD_CNY = 0.93;  // 1港币 = 0.93人民币
+let FX_USD_CNY = 7.25;  // 1美元 = 7.25人民币
+let fxReady = false;
+
+async function fetchFX() {
+  try {
+    // 免费汇率 API，获取以 USD 为基准的所有货币汇率
+    const resp = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data && data.rates) {
+      // rates.CNY = 多少 CNY = 1 USD
+      // rates.HKD = 多少 HKD = 1 USD
+      FX_USD_CNY = data.rates.CNY || FX_USD_CNY;
+      FX_HKD_CNY = (data.rates.CNY && data.rates.HKD)
+        ? data.rates.CNY / data.rates.HKD
+        : FX_HKD_CNY;
+      console.log('[FX] 实时汇率已更新 HKD→CNY:', FX_HKD_CNY.toFixed(4), 'USD→CNY:', FX_USD_CNY.toFixed(4));
+    }
+  } catch(e) {
+    console.warn('[FX] 汇率获取失败，使用默认值', e.message);
+  }
+  fxReady = true;
+}
+
 // 内嵌持仓数据 (无需后端也可见)
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
@@ -896,7 +923,7 @@ function openPositionManager(catIdx) {
       const curPrice = q ? q.price : null;
       const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
       const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
-      const dynVal = curPrice ? Math.round(h.shares * curPrice) : h.value;
+      const dynVal = curPrice ? (() => { let v = h.shares * curPrice; if (h.market === 'HK') v *= FX_HKD_CNY; else if (h.market === 'US') v *= FX_USD_CNY; return Math.round(v); })() : h.value;
       html += '<tr><td>' + h.name + '</td><td>' + h.market + '</td>' +
         '<td class="num">' + formatCN(h.shares) + '</td>' +
         '<td class="num">' + costSym + NUM(h.cost) + '</td>' +
@@ -1173,12 +1200,16 @@ function closeDefenseDetail() {
   document.getElementById('defenseOverlay').style.display = 'none';
 }
 
-// 动态市值计算：若存在 shares 则用 shares × 实时股价，否则用静态 value
+// 动态市值计算：若存在 shares 则用 shares × 实时股价 × 汇率 → RMB
 function holdingValue(h) {
   if (!h.shares || !h.symbol) return h.value;
   const q = getPrice(h.symbol);
   if (!q || !q.price) return h.value;
-  return Math.round(h.shares * q.price);
+  let val = h.shares * q.price;
+  // 港币/美元 → 人民币
+  if (h.market === 'HK') val *= FX_HKD_CNY;
+  else if (h.market === 'US') val *= FX_USD_CNY;
+  return Math.round(val);
 }
 function holdingRatio(h, p) {
   if (!h.shares || !h.symbol) return h.ratio;
@@ -1569,11 +1600,13 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
   if (e.target === this) closeReturnsDetail();
 });
 
-// 启动
-loadPortfolio();
-loadRemoteSnapshots().then(() => {
-  loadPrices().then(() => {
-    recordSnapshot();
+// 启动：先获取汇率，再加载持仓数据和股价
+fetchFX().then(() => {
+  loadPortfolio();
+  loadRemoteSnapshots().then(() => {
+    loadPrices().then(() => {
+      recordSnapshot();
+    });
   });
 });
 // 每60秒自动刷新股价
