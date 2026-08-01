@@ -147,12 +147,12 @@ tr:hover td { background: var(--surface-hover); }
 .status-warn { background: var(--amber); }
 .status-danger { background: var(--red); }
 
+#fcnContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fcn-card {
   border: 2px solid var(--border); border-radius: 10px; padding: 16px;
-  margin-bottom: 12px; background: var(--surface-hover);
+  background: var(--surface-hover);
   box-shadow: 3px 3px 0 var(--border);
 }
-.fcn-card:last-child { margin-bottom: 0; }
 .fcn-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .fcn-title { font-weight: 700; font-size: 14px; }
 .fcn-days { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 600; border: 1.5px solid var(--border); }
@@ -160,8 +160,8 @@ tr:hover td { background: var(--surface-hover); }
 .fcn-days.soon { background: rgba(217,161,59,0.15); color: var(--amber); }
 .fcn-days.safe { background: rgba(46,139,70,0.12); color: var(--green); }
 .fcn-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px 16px; margin-bottom: 10px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px 12px;
 }
 .fcn-item { display: flex; justify-content: space-between; align-items: center; }
 .fcn-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
@@ -304,13 +304,9 @@ tr:hover td { background: var(--surface-hover); }
   .table-wrap { display: none; }
   .mobile-cards { display: block; }
 
+  #fcnContainer { grid-template-columns: 1fr; }
   .fcn-card { padding: 14px; box-shadow: 2px 2px 0 var(--border); }
   .fcn-grid { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
-  .fcn-grid .fcn-item:nth-child(1) { order: 1; }
-  .fcn-grid .fcn-item:nth-child(4) { order: 2; }
-  .fcn-grid .fcn-item:nth-child(3) { order: 3; }
-  .fcn-grid .fcn-item:nth-child(2) { order: 4; }
-  .fcn-grid .fcn-item:nth-child(5) { order: 5; grid-column: 1 / -1; }
 
   .watch-legend { justify-content: flex-start; gap: 10px; flex-wrap: nowrap; }
   .watch-row { gap: 8px; }
@@ -1760,10 +1756,10 @@ function renderFCN(p) {
       </div>
       <div class="fcn-grid">
         <div class="fcn-item"><span class="fcn-label">面额</span><span class="fcn-val">${CNY(c.value)}</span></div>
-        <div class="fcn-item"><span class="fcn-label">行权价</span><span class="fcn-val">${curSym}${NUM(c.strike)}</span></div>
-        <div class="fcn-item"><span class="fcn-label">现价</span><span class="fcn-val">${currentPrice ? curSym+NUM(currentPrice) : '<span class="price-loading">加载中</span>'}</span></div>
         <div class="fcn-item"><span class="fcn-label">票息率</span><span class="fcn-val">${c.coupon_rate}%</span></div>
         <div class="fcn-item"><span class="fcn-label">到期日</span><span class="fcn-val">${c.expiry}</span></div>
+        <div class="fcn-item"><span class="fcn-label">行权价</span><span class="fcn-val">${curSym}${NUM(c.strike)}</span></div>
+        <div class="fcn-item"><span class="fcn-label">现价</span><span class="fcn-val">${currentPrice ? curSym+NUM(currentPrice) : '<span class="price-loading">加载中</span>'}</span></div>
       </div>
     </div>`;
   }
