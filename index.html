@@ -870,6 +870,7 @@ function savePortfolio() {
 function tradeableHoldings() {
   const result = [];
   portfolio.attack.assets.forEach((cat, ci) => {
+    if (!cat.holdings) return;
     cat.holdings.forEach((h, hi) => {
       if (h.shares && h.symbol) result.push({ ...h, catIdx: ci, holdIdx: hi, catName: cat.category });
     });
