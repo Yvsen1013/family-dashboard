@@ -925,12 +925,12 @@ function setConfirmButton(mode) {
   if (mode === 'undo') {
     btn.textContent = '撤销';
     btn.setAttribute('onclick', 'undoLastTrade()');
-    btn.style.background = 'var(--surface)';
-    btn.style.color = 'var(--text-secondary)';
+    btn.style.background = 'var(--red)';
+    btn.style.color = '#fff';
   } else {
     btn.textContent = '确认变更';
     btn.setAttribute('onclick', 'confirmTrade()');
-    btn.style.background = 'var(--accent)';
+    btn.style.background = 'var(--green)';
     btn.style.color = '#fff';
   }
 }
@@ -992,7 +992,7 @@ function openPositionManager(catIdx) {
       '<div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">成交价</label>' +
       '<input id="txPrice" type="number" step="0.01" placeholder="价格" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>' +
       '<div style="flex:0 0 auto;"><label style="font-size:11px;color:var(--text-secondary);">&nbsp;</label>' +
-      '<button id="txConfirmBtn" onclick="confirmTrade()" style="padding:8px 20px;background:var(--accent);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认变更</button></div>' +
+      '<button id="txConfirmBtn" onclick="confirmTrade()" style="padding:8px 20px;background:var(--green);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认变更</button></div>' +
       '</div>' +
       '<div id="txPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>' +
       '</div>';
