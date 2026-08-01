@@ -413,7 +413,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>FCN - 固定票息收益</h2>
-    <span style="font-size:12px;color:var(--text-muted);">时间价值工具</span>
+    <button class="position-btn" onclick="openFcnManager()" style="background:var(--green);">新增FCN</button>
   </div>
   <div id="fcnContainer"></div>
   <div class="concentration-warning" id="fcnWarning" style="display:none;">
@@ -483,6 +483,38 @@ tr:hover td { background: var(--surface-hover); }
     <div class="overlay-body" id="positionDetail"></div>
     <div style="margin-top:16px;font-size:11px;color:var(--text-muted);">
       变更后会自动更新市值（股数 × 实时股价）和均价
+    </div>
+  </div>
+</div>
+
+<!-- 新增FCN弹窗 -->
+<div id="fcnOverlay" class="overlay" style="display:none;">
+  <div class="overlay-card" style="max-width:560px;">
+    <div class="overlay-header">
+      <h2>新增FCN</h2>
+      <button class="overlay-close" onclick="closeFcnManager()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1 1 200px;"><label style="font-size:11px;color:var(--text-secondary);">标的名称</label>
+          <input id="fcnUnderlying" type="text" placeholder="如 腾讯控股" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
+        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">股票代码</label>
+          <input id="fcnSymbol" type="text" placeholder="如 0700.HK" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
+        <div style="flex:1 1 140px;"><label style="font-size:11px;color:var(--text-secondary);">面额 (¥)</label>
+          <input id="fcnValue" type="number" placeholder="如 1000000" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">行权价 (HK$)</label>
+          <input id="fcnStrike" type="number" step="0.01" placeholder="如 421.00" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">票息率 (%)</label>
+          <input id="fcnCoupon" type="number" step="0.0001" placeholder="如 1.9177" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+        <div style="flex:1 1 150px;"><label style="font-size:11px;color:var(--text-secondary);">到期日</label>
+          <input id="fcnExpiry" type="date" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);"></div>
+        <div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">成本 (HK$)</label>
+          <input id="fcnCost" type="number" step="0.01" placeholder="如 421.00" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+      </div>
+      <div id="fcnPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>
+      <div style="margin-top:16px;text-align:right;">
+        <button id="fcnConfirmBtn" onclick="confirmAddFcn()" style="padding:8px 20px;background:var(--green);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认新增</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1159,6 +1191,95 @@ function closePositionManager() {
   if (ov) ov.style.display = 'none';
   currentCatIdx = null;
   lastUndo = null;
+}
+
+// ───────── FCN 管理 ─────────
+
+function openFcnManager() {
+  var ov = document.getElementById('fcnOverlay');
+  if (!ov) return;
+  // 清空表单
+  ['fcnUnderlying','fcnSymbol','fcnValue','fcnStrike','fcnCoupon','fcnExpiry','fcnCost'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var pv = document.getElementById('fcnPreview'); if (pv) { pv.style.display = 'none'; pv.innerHTML = ''; }
+  setFcnButton('confirm');
+  ov.style.display = 'flex';
+}
+
+function closeFcnManager() {
+  var ov = document.getElementById('fcnOverlay');
+  if (ov) ov.style.display = 'none';
+}
+
+var lastFcnUndo = null;
+
+function setFcnButton(mode) {
+  var btn = document.getElementById('fcnConfirmBtn');
+  if (!btn) return;
+  if (mode === 'undo') {
+    btn.textContent = '撤销';
+    btn.setAttribute('onclick', 'undoAddFcn()');
+    btn.style.background = 'var(--red)';
+  } else {
+    btn.textContent = '确认新增';
+    btn.setAttribute('onclick', 'confirmAddFcn()');
+    btn.style.background = 'var(--green)';
+  }
+}
+
+function confirmAddFcn() {
+  var underlying = document.getElementById('fcnUnderlying').value.trim();
+  var symbol = document.getElementById('fcnSymbol').value.trim();
+  var value = parseFloat(document.getElementById('fcnValue').value);
+  var strike = parseFloat(document.getElementById('fcnStrike').value);
+  var coupon = parseFloat(document.getElementById('fcnCoupon').value);
+  var expiry = document.getElementById('fcnExpiry').value;
+  var cost = parseFloat(document.getElementById('fcnCost').value);
+  var pv = document.getElementById('fcnPreview');
+
+  if (!underlying || !symbol || isNaN(value) || value <= 0 || isNaN(strike) || strike <= 0 || isNaN(coupon) || !expiry || isNaN(cost)) {
+    pv.style.display = 'block';
+    pv.innerHTML = '<span style="color:var(--red);">请填写所有字段，确保完整且有效</span>';
+    return;
+  }
+
+  var fcnGroup = portfolio.attack.assets[2];
+  if (!fcnGroup) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--red);">找不到FCN资产组</span>'; return; }
+  if (!fcnGroup.fcn_contracts) fcnGroup.fcn_contracts = [];
+
+  var newId = 'No.' + (fcnGroup.fcn_contracts.length + 1);
+  var newContract = {
+    id: newId, underlying: underlying, symbol: symbol, value: value,
+    ratio: 0, strike: strike, coupon_rate: coupon, expiry: expiry, cost: cost
+  };
+  fcnGroup.fcn_contracts.push(newContract);
+  fcnGroup.total_value = fcnGroup.fcn_contracts.reduce(function(s, c) { return s + c.value; }, 0);
+
+  lastFcnUndo = { idx: fcnGroup.fcn_contracts.length - 1 };
+  savePortfolio(); loadPortfolio();
+
+  // 注册行情代码
+  var qtCode = buildQtCode(symbol, 'HK');
+  if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
+
+  pv.style.display = 'block';
+  pv.innerHTML = '<span style="color:var(--green);">✓ 已新增 FCN ' + newId + ' · ' + underlying + '，面额 ¥' + formatCN(value) + '，到期 ' + expiry + '</span>';
+  setFcnButton('undo');
+  loadPrices(true);
+}
+
+function undoAddFcn() {
+  if (!lastFcnUndo) return;
+  var fcnGroup = portfolio.attack.assets[2];
+  if (!fcnGroup || !fcnGroup.fcn_contracts) return;
+  fcnGroup.fcn_contracts.splice(lastFcnUndo.idx, 1);
+  fcnGroup.total_value = fcnGroup.fcn_contracts.reduce(function(s, c) { return s + c.value; }, 0);
+  lastFcnUndo = null;
+  savePortfolio(); loadPortfolio();
+  setFcnButton('confirm');
+  var pv = document.getElementById('fcnPreview');
+  if (pv) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，FCN未添加</span>'; }
 }
 
 // ───────── 动态股票搜索 ─────────
