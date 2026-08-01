@@ -421,7 +421,7 @@ tr:hover td { background: var(--surface-hover); }
 <div id="defenseOverlay" class="overlay" style="display:none;">
   <div class="overlay-card">
     <div class="overlay-header">
-      <h2>🛡️ 防守资产明细</h2>
+      <h2>◇ 防守资产明细</h2>
       <button class="overlay-close" onclick="closeDefenseDetail()">✕</button>
     </div>
     <div class="overlay-body" id="defenseDetail"></div>
@@ -432,7 +432,7 @@ tr:hover td { background: var(--surface-hover); }
 <div id="returnsOverlay" class="overlay" style="display:none;">
   <div class="overlay-card">
     <div class="overlay-header">
-      <h2>📈 收益明细</h2>
+      <h2>◇ 收益明细</h2>
       <button class="overlay-close" onclick="closeReturnsDetail()">✕</button>
     </div>
     <div class="overlay-body" id="returnsDetail"></div>
@@ -926,7 +926,7 @@ function showDefenseDetail() {
   }
 
   const typeNames = { '固收': '固收+产品', '黄金': '实物黄金', '现金': '现金及等价物' };
-  const typeIcons = { '固收': '📊', '黄金': '🥇', '现金': '💰' };
+  const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
   for (const [type, items] of Object.entries(groups)) {
     html += `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:20px 0 12px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
