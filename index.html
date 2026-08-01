@@ -1008,17 +1008,15 @@ function confirmTrade() {
     newCost = (h.shares * h.cost + qty * price) / newShares;
   } else {
     newShares = h.shares - qty;
-    newCost = (newShares > 0) ? h.cost : 0;
+    // 卖出后均价 = (旧总成本 - 卖出回收) / 剩余股数
+    // 卖出价高于均价则剩余均价下降，反之上升
+    newCost = (newShares > 0) ? (h.shares * h.cost - qty * price) / newShares : 0;
   }
 
   // 直接应用变更
   const cat = portfolio.attack.assets[h.catIdx];
-  if (action === 'buy') {
-    cat.holdings[h.holdIdx].cost = (h.shares * h.cost + qty * price) / newShares;
-    cat.holdings[h.holdIdx].shares = newShares;
-  } else {
-    cat.holdings[h.holdIdx].shares = newShares;
-  }
+  cat.holdings[h.holdIdx].shares = newShares;
+  cat.holdings[h.holdIdx].cost = newCost;
 
   savePortfolio();
   loadPortfolio();
