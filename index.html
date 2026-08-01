@@ -520,7 +520,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 2;
+const PORTFOLIO_DATA_VERSION = 3;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1071,7 +1071,7 @@ function confirmTrade() {
     if (!cat.holdings) cat.holdings = [];
     lastUndo = { catIdx: catIdx, holdIdx: cat.holdings.length, oldShares: 0, oldCost: 0, isNewStock: true };
     var fxRate = market === 'HK' ? FX_HKD_CNY : market === 'US' ? FX_USD_CNY : 1;
-    cat.holdings.push({ name: name, symbol: symbol, market: market, shares: qty, cost: price, value: Math.round(qty * price * fxRate), ratio: 0 });
+    cat.holdings.push({ name: name, symbol: symbol, market: market, shares: qty, cost: price, value: Math.round(qty * price * fxRate), ratio: 0, tags: [], note: '' });
     var qtCode = buildQtCode(symbol, market);
     if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
     savePortfolio(); loadPortfolio();
@@ -1378,8 +1378,8 @@ function renderPositions(p) {
     const val = holdingValue(h);
     const rat = holdingRatio(h, p);
     if (!h.symbol) {
-      const tagCls = h.tags.includes('投顾') ? 'tag-advisory' : 'tag-short';
-      const tagLabel = h.tags.includes('投顾') ? '投顾' : '短期';
+      const tagCls = (h.tags || []).includes('投顾') ? 'tag-advisory' : 'tag-short';
+      const tagLabel = (h.tags || []).includes('投顾') ? '投顾' : '短期';
       hkHtml += `<tr>
         <td style="font-weight:500;">${h.name} <span style="font-size:11px;color:var(--text-muted);">${h.note}</span></td>
         <td><span class="tag ${tagCls}">${tagLabel}</span></td>
@@ -1400,8 +1400,8 @@ function renderPositions(p) {
     } else {
       const { price, pe, peVal, pnl } = priceDisplay(h.symbol, h.cost, h.value);
       const peClass = peColorClass(peVal, h.target_pe);
-      const tagEl = h.tags.length > 0
-        ? `<span class="tag ${h.tags.includes('短期') ? 'tag-short' : ''}">${h.tags.join(', ')}</span>`
+      const tagEl = (h.tags || []).length > 0
+        ? `<span class="tag ${(h.tags || []).includes('短期') ? 'tag-short' : ''}">${(h.tags || []).join(', ')}</span>`
         : '';
       hkHtml += `<tr>
         <td style="font-weight:500;">${h.name}</td>
@@ -1441,7 +1441,7 @@ function renderPositions(p) {
     const rat = holdingRatio(h, p);
     const { price, pe, peVal, pnl } = priceDisplay(h.symbol, h.cost, h.value);
     const peClass = peColorClass(peVal, h.target_pe);
-    const tagEl = h.tags.length > 0
+    const tagEl = (h.tags || []).length > 0
       ? `<span class="tag tag-risk">风投</span>`
       : '';
     usHtml += `<tr>
