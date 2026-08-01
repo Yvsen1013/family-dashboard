@@ -321,7 +321,7 @@ tr:hover td { background: var(--surface-hover); }
 <!-- 总览指标 -->
 <div class="metrics-grid" id="metricsGrid">
   <div class="metric-card clickable" onclick="showReturnsDetail()" title="点击查看收益明细" id="metricTotalAssets">
-    <div class="label">总资产（含风投） ▸</div>
+    <div class="label">总资产(含风投) ▸</div>
     <div class="value" id="totalAssets">---</div>
     <div class="sub">含非流动性资产</div>
   </div>
@@ -407,11 +407,11 @@ tr:hover td { background: var(--surface-hover); }
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;line-height:1.8;">
     <span class="watch-legend-row" style="white-space:nowrap;">
-      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yellow);margin-right:4px;vertical-align:middle;"></span> 低估（橙线）
-      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin:0 4px 0 12px;vertical-align:middle;"></span> 合理区间（绿线）
-      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin:0 4px 0 12px;vertical-align:middle;"></span> 高估（红线）
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yellow);margin-right:4px;vertical-align:middle;"></span> 低估(橙线)
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin:0 4px 0 12px;vertical-align:middle;"></span> 合理区间(绿线)
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin:0 4px 0 12px;vertical-align:middle;"></span> 高估(红线)
     </span>
-    <span class="mobile-block"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gray);margin-right:4px;vertical-align:middle;"></span> 待评估（灰线）</span>
+    <span class="mobile-block"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gray);margin-right:4px;vertical-align:middle;"></span> 待评估(灰线)</span>
   </div>
   <div style="margin-bottom:16px;">
     <h3 style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">🇺🇸 美股</h3>
@@ -458,7 +458,7 @@ const CNY = (n) => n == null ? '---' : '¥' + formatCN(n);
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
 
-// 内嵌持仓数据（无需后端也可见）
+// 内嵌持仓数据(无需后端也可见)
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -473,7 +473,7 @@ const EMBEDDED_PORTFOLIO = {
         "ratio": 16.87,
         "holdings": [
           {
-            "name": "E大长赢（新）",
+            "name": "E大长赢(新)",
             "symbol": null,
             "market": "CN",
             "value": 164622,
@@ -699,7 +699,7 @@ const EMBEDDED_PORTFOLIO = {
         "type": "固收"
       },
       {
-        "name": "实物黄金（300g）",
+        "name": "实物黄金(300g)",
         "value": 270000,
         "ratio": 3.59,
         "type": "黄金"
@@ -737,7 +737,7 @@ const EMBEDDED_PORTFOLIO = {
     ]
   },
   "illiquid": {
-    "name": "启明风投（未退出）",
+    "name": "启明风投(未退出)",
     "value": 4657000,
     "ratio": 38.23,
     "note": "非流动性资产，不计入可配置资产"
@@ -748,7 +748,7 @@ let portfolio = EMBEDDED_PORTFOLIO;
 let prices = {"0700.HK":{"name":"腾讯控股","price":475.2,"prev_close":471.8,"pe":17.36,"currency":"HKD"},"9992.HK":{"name":"泡泡玛特","price":162.8,"prev_close":167.4,"pe":15.33,"currency":"HKD"},"9633.HK":{"name":"农夫山泉","price":43.92,"prev_close":44.15,"pe":28.12,"currency":"HKD"},"600938.SS":{"name":"中国海油","price":32.22,"prev_close":32.55,"pe":12.28,"mcap":1531415000000,"currency":"CNY"},"600519.SS":{"name":"贵州茅台","price":1337.42,"prev_close":1338.84,"pe":20.21,"currency":"CNY"},"300602.SZ":{"name":"飞荣达","price":32.61,"prev_close":34.15,"pe":49.78,"currency":"CNY"},"601869.SS":{"name":"长飞光纤","price":279.01,"prev_close":292.15,"pe":199.62,"currency":"CNY"},"002384.SZ":{"name":"东山精密","price":173.49,"prev_close":176.9,"pe":155.76,"currency":"CNY"},"PDD":{"name":"拼多多","price":87.44,"prev_close":87.19,"pe":9.35,"currency":"USD"},"TSLA":{"name":"特斯拉","price":308.85,"prev_close":305.11,"pe":285.97,"currency":"USD"},"RKLB":{"name":"Rocket Lab","price":64.68,"prev_close":62.62,"pe":-202.13,"currency":"USD"},"NVDA":{"name":"英伟达","price":195.04,"prev_close":194.81,"pe":29.87,"currency":"USD"},"GOOGL":{"name":"谷歌-A","price":333.66,"prev_close":332.77,"pe":16.74,"currency":"USD"},"AAPL":{"name":"苹果","price":333.43,"prev_close":332.59,"pe":40.37,"currency":"USD"},"SPCX":{"name":"SpaceX","price":112.2,"prev_close":112.55,"pe":null,"currency":"USD"},"GOLD":{"name":"黄金ETF华安","price":8.433,"prev_close":8.360,"pe":null,"currency":"CNY"}};
 let refreshTimer = null;
 
-// 腾讯行情 API 符号映射（支持 CORS，浏览器直连）
+// 腾讯行情 API 符号映射(支持 CORS，浏览器直连)
 const QT_MAP = {
   '0700.HK':'hk00700', '9992.HK':'hk09992', '9633.HK':'hk09633',
   '600938.SS':'sh600938', '600519.SS':'sh600519', '300602.SZ':'sz300602',
@@ -892,11 +892,11 @@ function renderMetrics(p) {
   if (nearestExpiryMonth !== null) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
-  document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block">（' + nearestDays + '天后到期）</span>' : '';
-  // 动态计算实物黄金价值（银行投资金条 = Au99.99基准 × 银行溢价系数，前一日价格）
+  document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block">(' + nearestDays + '天后到期)</span>' : '';
+  // 动态计算实物黄金价值(银行投资金条 = Au99.99基准 × 银行溢价系数，前一日价格)
   const goldQ = prices['GOLD'];
   const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900; // ETF×100 ≈ Au99.99/g
-  const bankPremium = 1.08; // 银行金条溢价（加工+渠道，约8%）
+  const bankPremium = 1.08; // 银行金条溢价(加工+渠道，约8%)
   const goldPerGram = Math.round(au9999PerGram * bankPremium);
   const goldValue = 300 * goldPerGram;
   const defenseBase = p.defense.total - 270000; // 扣除静态黄金值
@@ -910,7 +910,7 @@ function renderQimingVC() {
   if (!portfolio || !portfolio.illiquid) return;
   const ill = portfolio.illiquid;
   document.getElementById('qimingValue').textContent = CNY(ill.value);
-  document.getElementById('qimingNote').innerHTML = '占总资产 ' + ill.ratio.toFixed(1) + '%<span class="mobile-block">（不计入可配置资产）</span>';
+  document.getElementById('qimingNote').innerHTML = '占总资产 ' + ill.ratio.toFixed(1) + '%<span class="mobile-block">(不计入可配置资产)</span>';
 }
 
 function showDefenseDetail() {
@@ -943,7 +943,7 @@ function showDefenseDetail() {
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? goldValue : a.value;
-      const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);">（前日银行金条 ¥' + goldPerGram + '/g）</span>' : '';
+      const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);">(前日银行金条 ¥' + goldPerGram + '/g)</span>' : '';
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(42,46,58,0.3);">
         <span style="font-weight:500;">${a.name}${priceNote}</span>
         <span style="text-align:right;"><span style="font-weight:600;color:var(--text);">${CNY(itemValue)}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
@@ -1081,8 +1081,8 @@ function renderFCN(p) {
     const margin = currentPrice ? ((currentPrice - c.strike) / c.strike * 100) : null;
     const statusCls = aboveStrike ? 'status-safe' : 'status-danger';
     const statusLabel = aboveStrike
-      ? '安全（现价高于行权价 ' + margin.toFixed(1) + '%）'
-      : '危险（现价低于行权价）';
+      ? '安全(现价高于行权价 ' + margin.toFixed(1) + '%)'
+      : '危险(现价低于行权价)';
 
     if (!aboveStrike && currentPrice) {
       hasWarning = true;
@@ -1180,7 +1180,7 @@ function getSnapshots() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]'); }
     catch(e) { return []; }
   })();
-  // 合并 remote + local（去重，local 优先）
+  // 合并 remote + local(去重，local 优先)
   const map = {};
   for (const s of remoteSnapshots) map[s.date] = s;
   for (const s of local) map[s.date] = s;
@@ -1274,7 +1274,7 @@ function showReturnsDetail() {
       return { amount, pct };
     }
 
-    // 本月：基准日为上月最后一个快照（而非本月当天）
+    // 本月：基准日为上月最后一个快照(而非本月当天)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     let monthBaseline = null;
     for (const s of snapshots) {
