@@ -785,7 +785,7 @@ function getPrice(symbol) {
   if (!symbol) return null;
   const q = prices[symbol];
   if (!q) return null;
-  return { price: q.price, pe: q.pe, change_pct: q.change_pct, prev_close: q.previous_close, currency: q.currency, mcap: q.market_cap };
+  return { price: q.price, pe: q.pe, change_pct: q.change_pct, prev_close: q.prev_close, currency: q.currency, mcap: q.market_cap };
 }
 
 function priceArrow(symbol) {
