@@ -926,12 +926,24 @@ function openPositionManager(catIdx) {
     var titleEl = document.querySelector('#positionOverlay .overlay-header h2');
     if (titleEl) titleEl.textContent = '⌖ 持仓变更 · ' + catName;
     let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
-      '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th></tr></thead><tbody>';
+      '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th><th class="num">现价</th><th class="num">市值(RMB)</th></tr></thead><tbody>';
     items.forEach((h) => {
       const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+      const q = getPrice(h.symbol);
+      const curPrice = q ? q.price : null;
+      const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+      let mktVal = '---';
+      if (q && q.price) {
+        let v = h.shares * q.price;
+        if (h.market === 'HK') v *= FX_HKD_CNY;
+        else if (h.market === 'US') v *= FX_USD_CNY;
+        mktVal = CNY(Math.round(v));
+      }
       html += '<tr><td>' + h.name + '</td>' +
         '<td class="num">' + formatCN(h.shares) + '</td>' +
-        '<td class="num">' + costSym + NUM(h.cost) + '</td></tr>';
+        '<td class="num">' + costSym + NUM(h.cost) + '</td>' +
+        '<td class="num">' + (curPrice ? curSym + NUM(curPrice) : '---') + '</td>' +
+        '<td class="num">' + mktVal + '</td></tr>';
     });
     html += '</tbody></table></div>';
 
@@ -995,6 +1007,9 @@ async function doStockSearch(keyword) {
   rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">搜索中...</div>';
   rd.style.display = 'block';
   var results = await searchStocks(keyword);
+  // 根据当前板块过滤：A股&港股=0仅显示 HK/SH/SZ，美股=1仅显示 US
+  if (currentCatIdx === 0) { results = results.filter(r => r.market === 'HK' || r.market === 'SH' || r.market === 'SZ'); }
+  else if (currentCatIdx === 1) { results = results.filter(r => r.market === 'US'); }
   if (!results.length) { rd.innerHTML = '<div style="padding:8px;color:var(--text-secondary);font-size:12px;">未找到匹配的股票</div>'; return; }
   var h = '';
   results.forEach(function(r) {
