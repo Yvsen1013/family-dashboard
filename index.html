@@ -268,8 +268,6 @@ tr:hover td { background: var(--surface-hover); }
   .mobile-cards { display: block; }
 
   .fcn-card { padding: 14px; box-shadow: 2px 2px 0 var(--border); }
-  .fcn-header { flex-wrap: wrap; }
-  .fcn-days { width: 100%; text-align: right; margin-top: 6px; }
   .fcn-grid { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
   .fcn-grid .fcn-item:nth-child(1) { order: 1; }
   .fcn-grid .fcn-item:nth-child(4) { order: 2; }
@@ -875,7 +873,7 @@ function renderMetrics(p) {
   if (nearestExpiryMonth !== null) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
-  document.getElementById('fcnRatio').textContent = nearestDays !== null ? nearestUnderlying + ' · ' + nearestDays + '天后到期' : '';
+  document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block">（' + nearestDays + '天后到期）</span>' : '';
   // 动态计算实物黄金价值（银行投资金条 = Au99.99基准 × 银行溢价系数，前一日价格）
   const goldQ = prices['GOLD'];
   const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900; // ETF×100 ≈ Au99.99/g
@@ -1075,7 +1073,7 @@ function renderFCN(p) {
     html += `<div class="fcn-card">
       <div class="fcn-header">
         <span class="fcn-title">FCN ${c.id} · ${c.underlying}</span>
-        <span class="fcn-days ${daysCls}">（${daysLeft}天后到期）</span>
+        <span class="fcn-days ${daysCls}">${daysLeft}天后到期</span>
       </div>
       <div class="fcn-grid">
         <div class="fcn-item"><span class="fcn-label">面额</span><span class="fcn-val">${CNY(c.value)}</span></div>
