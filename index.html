@@ -1075,14 +1075,12 @@ function confirmTrade() {
     var qtCode = buildQtCode(symbol, market);
     if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
     savePortfolio(); loadPortfolio();
-    openPositionManager(currentCatIdx);
-    var fp = document.getElementById('txPreview');
-    if (fp) {
-      fp.style.display = 'block';
-      fp.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>'
-        + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
-    }
-    loadPrices(true); // 触发价格刷新获取新股行情
+    // 不重建弹窗，直接在原地显示撤销按钮
+    preview.style.display = 'block';
+    preview.innerHTML = '<span style="color:var(--green);">✓ 已新增 ' + name + '，买入 ' + formatCN(qty) + ' 股，成本 ' + (market==='HK'?'HK$':market==='US'?'$':'¥') + NUM(price) + '</span>'
+      + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+    clearTradeForm();
+    loadPrices(true);
     return;
   }
 
@@ -1100,14 +1098,21 @@ function confirmTrade() {
   portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].shares = newShares;
   portfolio.attack.assets[h.catIdx].holdings[h.holdIdx].cost = newCost;
   savePortfolio(); loadPortfolio();
-  openPositionManager(currentCatIdx);
+  // 不重建弹窗，直接在原地显示撤销按钮
+  preview.style.display = 'block';
+  preview.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
+    + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+  clearTradeForm();
+}
 
-  fp = document.getElementById('txPreview');
-  if (fp) {
-    fp.style.display = 'block';
-    fp.innerHTML = '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
-      + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
-  }
+function clearTradeForm() {
+  var s = document.getElementById('txStockSearch'); if (s) s.value = '';
+  var q = document.getElementById('txQty'); if (q) q.value = '';
+  var p = document.getElementById('txPrice'); if (p) p.value = '';
+  var sym = document.getElementById('txStockSymbol'); if (sym) sym.value = '';
+  var nm = document.getElementById('txStockName'); if (nm) nm.value = '';
+  var mk = document.getElementById('txStockMarket'); if (mk) mk.value = '';
+  var isNew = document.getElementById('txStockIsNew'); if (isNew) isNew.value = '0';
 }
 
 function undoLastTrade() {
@@ -1118,7 +1123,7 @@ function undoLastTrade() {
   else { if (cat.holdings[lastUndo.holdIdx]) { cat.holdings[lastUndo.holdIdx].shares = lastUndo.oldShares; cat.holdings[lastUndo.holdIdx].cost = lastUndo.oldCost; } }
   lastUndo = null;
   savePortfolio(); loadPortfolio();
-  openPositionManager(currentCatIdx);
+  // 不重建弹窗，直接在原地显示撤销结果
   var pv = document.getElementById('txPreview');
   if (pv) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>'; }
 }
