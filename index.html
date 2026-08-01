@@ -884,6 +884,10 @@ function tradeableHoldings() {
 }
 
 function openPositionManager() {
+  var ov = document.getElementById('positionOverlay');
+  if (!ov) { console.error('positionOverlay element not found!'); return; }
+  var pd = document.getElementById('positionDetail');
+  if (!pd) { console.error('positionDetail element not found!'); return; }
   const items = tradeableHoldings();
   console.log('openPositionManager called, items:', items.length);
   let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
@@ -928,8 +932,8 @@ function openPositionManager() {
     '</div>' +
     '</div>';
 
-  document.getElementById('positionDetail').innerHTML = html;
-  document.getElementById('positionOverlay').style.display = 'flex';
+  pd.innerHTML = html;
+  ov.style.display = 'flex';
 
   // 选中股票时自动填入现价
   document.getElementById('txStock').addEventListener('change', autoFillPrice);
@@ -1014,7 +1018,8 @@ function applyTrade() {
 }
 
 function closePositionManager() {
-  document.getElementById('positionOverlay').style.display = 'none';
+  var ov = document.getElementById('positionOverlay');
+  if (ov) ov.style.display = 'none';
   pendingTrade = null;
 }
 
