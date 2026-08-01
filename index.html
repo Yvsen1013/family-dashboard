@@ -1171,19 +1171,58 @@ function findHoldingBySymbol(symbol, catIdx) {
 }
 
 let searchTimer = null, searchCache = {};
+let searchSeq = 0;
+
 async function searchStocks(keyword) {
   if (keyword.length < 1) return [];
   const k = keyword.trim().toLowerCase();
   if (searchCache[k]) return searchCache[k];
-  try {
-    // 通过后端代理（backend :8899，已设置 CORS）
-    const resp = await fetch('http://127.0.0.1:8899/api/search?q=' + encodeURIComponent(keyword));
-    const data = await resp.json();
-    const results = (data.results || []).map(r => ({
-      name: r.name, symbol: r.symbol, market: r.market
-    }));
-    searchCache[k] = results; return results;
-  } catch(e) { console.warn('搜索失败:', e.message); return []; }
+
+  // 用 <script> 标签注入绕过 CORS（smartbox 返回 var v_hint=... 是合法 JS）
+  return new Promise((resolve) => {
+    var mySeq = ++searchSeq;
+    var script = document.createElement('script');
+    var done = false;
+
+    var timeout = setTimeout(function() {
+      if (done) return; done = true;
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve([]);
+    }, 5000);
+
+    script.onload = function() {
+      if (done || mySeq !== searchSeq) { if (script.parentNode) script.parentNode.removeChild(script); return; }
+      done = true; clearTimeout(timeout);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      var hint = window.v_hint; window.v_hint = undefined;
+      if (!hint) { resolve([]); return; }
+      var results = [], seen = {};
+      var entries = hint.split('^');
+      for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i]; if (!entry.trim()) continue;
+        var f = entry.split('~'); if (f.length < 5) continue;
+        var market = f[0], code = f[1], rawName = f[2], type = f[4];
+        if (!type || (type.indexOf('GP') !== 0 && type !== 'GP')) continue;
+        var sym = buildPortfolioSymbol(code, market);
+        if (!sym || seen[sym]) continue; seen[sym] = true;
+        results.push({
+          name: rawName.replace(/\\u([\dA-Fa-f]{4})/g, function(_, h) { return String.fromCharCode(parseInt(h, 16)); }),
+          symbol: sym, market: market.toUpperCase()
+        });
+        if (results.length >= 15) break;
+      }
+      searchCache[k] = results; resolve(results);
+    };
+
+    script.onerror = function() {
+      if (done) return; done = true; clearTimeout(timeout);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve([]);
+    };
+
+    script.src = 'https://smartbox.gtimg.cn/s3/?q=' + encodeURIComponent(keyword) + '&t=all';
+    document.head.appendChild(script);
+  });
 }
 
 function getPrice(symbol) {
