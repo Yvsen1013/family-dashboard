@@ -1136,14 +1136,7 @@ function renderMetrics(p) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
   document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block"> (' + nearestDays + '天后到期)</span>' : '';
-  // 动态计算实物黄金价值 (银行投资金条 = Au99.99基准 × 银行溢价系数，前一日价格)
-  const goldQ = prices['GOLD'];
-  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900; // ETF×100 ≈ Au99.99/g
-  const bankPremium = 1.08; // 银行金条溢价 (加工+渠道，约8%)
-  const goldPerGram = Math.round(au9999PerGram * bankPremium);
-  const goldValue = 300 * goldPerGram;
-  const defenseBase = p.defense.total - 270000; // 扣除静态黄金值
-  const defenseDynamic = defenseBase + goldValue;
+  const defenseDynamic = computeDefenseDynamic();
   document.getElementById('defenseAssets').textContent = CNY(defenseDynamic, true);
   document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / totalAssets * 100).toFixed(1) + '%';
   renderQimingVC();
@@ -1159,13 +1152,12 @@ function renderQimingVC() {
 function showDefenseDetail() {
   if (!portfolio || !portfolio.defense) return;
   const d = portfolio.defense;
+  const defenseDynamic = computeDefenseDynamic();
+  // 用于黄金明细展示
   const goldQ = prices['GOLD'];
   const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-  const bankPremium = 1.08;
-  const goldPerGram = Math.round(au9999PerGram * bankPremium);
+  const goldPerGram = Math.round(au9999PerGram * 1.08);
   const goldValue = 300 * goldPerGram;
-  const defenseBase = d.total - 270000;
-  const defenseDynamic = defenseBase + goldValue;
   let html = '';
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);">
     <span style="font-size:16px;font-weight:600;color:var(--green);">防守总资产: ${CNY(defenseDynamic)}</span>
@@ -1235,18 +1227,20 @@ function computeAttackTotal() {
   return total;
 }
 
-// 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明剩余
-function computeTotalAssets() {
-  const attackTotal = computeAttackTotal();
-  // 防守资产：含黄金动态价格
+// 动态计算防守资产(含黄金实时价格)
+function computeDefenseDynamic() {
+  if (!portfolio.defense) return 0;
   const goldQ = prices['GOLD'];
   const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-  const goldValue = Math.round(300 * au9999PerGram * 1.08);
-  const defenseBase = (portfolio.defense ? portfolio.defense.total : 0) - 270000;
-  const defenseDynamic = defenseBase + goldValue;
-  // 启明剩余
-  const illiquidValue = (portfolio.illiquid ? portfolio.illiquid.value : 0);
-  return attackTotal + defenseDynamic + illiquidValue;
+  const goldPerGram = Math.round(au9999PerGram * 1.08);
+  const goldValue = 300 * goldPerGram;
+  const defenseBase = portfolio.defense.total - 270000; // 扣除静态黄金值
+  return defenseBase + goldValue;
+}
+
+// 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明剩余
+function computeTotalAssets() {
+  return computeAttackTotal() + computeDefenseDynamic() + (portfolio.illiquid ? portfolio.illiquid.value : 0);
 }
 
 function renderPositions(p) {
@@ -1497,14 +1491,7 @@ function saveSnapshots(arr) {
 
 function getCurrentTotal() {
   if (!portfolio) return 0;
-  const goldQ = prices['GOLD'];
-  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-  const bankPremium = 1.08;
-  const goldPerGram = Math.round(au9999PerGram * bankPremium);
-  const goldValue = 300 * goldPerGram;
-  const defenseBase = portfolio.defense.total - 270000;
-  const defenseDynamic = defenseBase + goldValue;
-  return computeAttackTotal() + defenseDynamic + (portfolio.illiquid ? portfolio.illiquid.value : 0);
+  return computeAttackTotal() + computeDefenseDynamic() + (portfolio.illiquid ? portfolio.illiquid.value : 0);
 }
 
 function recordSnapshot() {
@@ -1517,11 +1504,7 @@ function recordSnapshot() {
     date: today,
     total: Math.round(total),
     attack: computeAttackTotal(),
-    defense: (() => {
-      const goldQ = prices['GOLD'];
-      const au = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-      return portfolio.defense.total - 270000 + Math.round(300 * au * 1.08);
-    })(),
+    defense: computeDefenseDynamic(),
     illiquid: portfolio.illiquid ? portfolio.illiquid.value : 0
   });
   // 保留最近 500 条
