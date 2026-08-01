@@ -66,6 +66,14 @@ h3 { font-size: 13px; font-weight: 800; color: var(--text-secondary); text-trans
   padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 8px;
 }
 .refresh-btn:hover { background: var(--surface-hover); }
+.position-btn {
+  background: var(--surface); color: var(--text); border: 2px solid var(--border);
+  padding: 5px 14px; border-radius: var(--card-radius); font-size: 12px;
+  font-family: var(--font); cursor: pointer; box-shadow: 2px 2px 0 var(--border);
+  transition: all 0.15s ease;
+}
+.position-btn:hover { background: var(--surface-hover); transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--border); }
+.position-btn:active { transform: translate(0, 0); box-shadow: 1px 1px 0 var(--border); }
 .live-dot {
   display: inline-block; width: 7px; height: 7px; background: var(--green);
   border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite;
@@ -232,6 +240,12 @@ tr:hover td { background: var(--surface-hover); }
 }
 .overlay-close:hover { background: var(--surface-hover); }
 .overlay-close:active { transform: translate(2px, 2px); box-shadow: none; }
+.pos-mgr-table-wrap { overflow-x: auto; margin-bottom: 8px; }
+.pos-mgr-table { width: 100%; border-collapse: collapse; }
+.pos-mgr-table th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--text-secondary); border-bottom: 2px solid var(--border); }
+.pos-mgr-table td { padding: 10px 12px; border-bottom: 1px solid #e6d5b4; font-size: 13px; }
+.pos-mgr-table .num { text-align: right; font-family: var(--num-font); -webkit-text-stroke: 0; }
+.pos-mgr-table tr:hover td { background: rgba(217, 119, 87, 0.06); }
 .returns-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 0; border-bottom: 1px dashed #e6d5b4;
@@ -353,6 +367,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>A股 & 港股 持仓</h2>
+    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -372,6 +387,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>美股 持仓</h2>
+    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -454,6 +470,20 @@ tr:hover td { background: var(--surface-hover); }
   </div>
 </div>
 
+<!-- 持仓变更管理弹窗 -->
+<div id="positionOverlay" class="overlay" style="display:none;">
+  <div class="overlay-card" style="max-width:800px;">
+    <div class="overlay-header">
+      <h2>⌖ 持仓变更管理</h2>
+      <button class="overlay-close" onclick="closePositionManager()">✕</button>
+    </div>
+    <div class="overlay-body" id="positionDetail"></div>
+    <div style="margin-top:16px;font-size:11px;color:var(--text-muted);">
+      变更后会自动更新市值（股数 × 实时股价）和均价
+    </div>
+  </div>
+</div>
+
 <script>
 const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
 const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
@@ -506,6 +536,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 562980,
             "ratio": 7.48,
             "cost": 488.0,
+            "shares": 1154,
             "note": "核心持仓",
             "tags": [],
             "target_pe": "16-22"
@@ -517,6 +548,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 416859,
             "ratio": 5.54,
             "cost": 175.0,
+            "shares": 2382,
             "note": "",
             "tags": [],
             "target_pe": "15-25"
@@ -528,6 +560,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 33165,
             "ratio": 0.44,
             "cost": 330.14,
+            "shares": 100,
             "note": "短期交易",
             "tags": [
               "短期"
@@ -590,6 +623,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 127127,
             "ratio": 1.69,
             "cost": 127.53,
+            "shares": 997,
             "note": "",
             "tags": [],
             "target_pe": "10-15"
@@ -601,6 +635,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 83922,
             "ratio": 1.12,
             "cost": 339.25,
+            "shares": 247,
             "note": "风险投资",
             "tags": [
               "风投"
@@ -613,6 +648,7 @@ const EMBEDDED_PORTFOLIO = {
             "value": 48903,
             "ratio": 0.65,
             "cost": 77.6,
+            "shares": 630,
             "note": "风险投资",
             "tags": [
               "风投"
@@ -815,10 +851,164 @@ async function loadPrices(force) {
 function refreshPrices() { loadPrices(true); }
 
 function loadPortfolio() {
+  const saved = localStorage.getItem('family_portfolio');
+  if (saved) {
+    try { portfolio = JSON.parse(saved); } catch(e) {}
+  }
   renderMetrics(portfolio);
   renderPositions(portfolio);
   renderFCN(portfolio);
   renderWatchlist(portfolio);
+}
+function savePortfolio() {
+  localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
+}
+
+// ───────── 持仓变更管理 ─────────
+
+// 获取所有可交易的持仓（有 shares 的）
+function tradeableHoldings() {
+  const result = [];
+  portfolio.attack.assets.forEach((cat, ci) => {
+    cat.holdings.forEach((h, hi) => {
+      if (h.shares && h.symbol) result.push({ ...h, catIdx: ci, holdIdx: hi, catName: cat.category });
+    });
+  });
+  return result;
+}
+
+function openPositionManager() {
+  const items = tradeableHoldings();
+  let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
+    '<th>标的</th><th>市场</th><th class="num">持仓股数</th><th class="num">均价</th><th class="num">现价</th><th class="num">动态市值</th></tr></thead><tbody>';
+  items.forEach((h, i) => {
+    const q = getPrice(h.symbol);
+    const curPrice = q ? q.price : null;
+    const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+    const costSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+    const dynVal = curPrice ? Math.round(h.shares * curPrice) : h.value;
+    html += '<tr><td>' + h.name + '</td><td>' + h.market + '</td>' +
+      '<td class="num">' + formatCN(h.shares) + '</td>' +
+      '<td class="num">' + costSym + NUM(h.cost) + '</td>' +
+      '<td class="num">' + (curPrice ? curSym + NUM(curPrice) : '---') + '</td>' +
+      '<td class="num">' + CNY(dynVal) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // 交易表单
+  html += '<div style="margin-top:24px;border-top:2px dashed var(--border);padding-top:16px;">' +
+    '<h3 style="margin-bottom:12px;">新增交易记录</h3>' +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+    '<div style="flex:1 1 160px;"><label style="font-size:11px;color:var(--text-secondary);">股票</label>' +
+    '<select id="txStock" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">';
+  items.forEach((h, i) => {
+    html += '<option value="' + i + '">' + h.name + '</option>';
+  });
+  html += '</select></div>' +
+    '<div style="flex:1 1 100px;"><label style="font-size:11px;color:var(--text-secondary);">操作</label>' +
+    '<select id="txAction" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">' +
+    '<option value="buy">买入</option><option value="sell">卖出</option></select></div>' +
+    '<div style="flex:1 1 100px;"><label style="font-size:11px;color:var(--text-secondary);">数量</label>' +
+    '<input id="txQty" type="number" min="1" placeholder="股数" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>' +
+    '<div style="flex:1 1 120px;"><label style="font-size:11px;color:var(--text-secondary);">成交价</label>' +
+    '<input id="txPrice" type="number" step="0.01" placeholder="价格" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>' +
+    '<div style="flex:0 0 auto;"><label style="font-size:11px;color:var(--text-secondary);">&nbsp;</label>' +
+    '<button onclick="previewTrade()" style="padding:8px 20px;background:var(--surface);border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">预览</button></div>' +
+    '</div>' +
+    '<div id="txPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>' +
+    '<div style="margin-top:14px;text-align:right;">' +
+    '<button id="txApplyBtn" onclick="applyTrade()" style="display:none;padding:8px 24px;background:var(--accent);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);font-size:14px;box-shadow:2px 2px 0 var(--border);">确认变更并保存</button>' +
+    '</div>' +
+    '</div>';
+
+  document.getElementById('positionDetail').innerHTML = html;
+  document.getElementById('positionOverlay').style.display = 'flex';
+
+  // 选中股票时自动填入现价
+  document.getElementById('txStock').addEventListener('change', autoFillPrice);
+  autoFillPrice();
+}
+
+function autoFillPrice() {
+  const items = tradeableHoldings();
+  const idx = parseInt(document.getElementById('txStock').value);
+  const h = items[idx];
+  if (!h) return;
+  const q = getPrice(h.symbol);
+  if (q && q.price) document.getElementById('txPrice').value = q.price;
+}
+
+let pendingTrade = null;
+
+function previewTrade() {
+  const items = tradeableHoldings();
+  const idx = parseInt(document.getElementById('txStock').value);
+  const action = document.getElementById('txAction').value;
+  const qty = parseInt(document.getElementById('txQty').value);
+  const price = parseFloat(document.getElementById('txPrice').value);
+  const h = items[idx];
+  const preview = document.getElementById('txPreview');
+  const applyBtn = document.getElementById('txApplyBtn');
+
+  if (!h || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) {
+    preview.style.display = 'block';
+    preview.innerHTML = '<span style="color:var(--red);">请填写完整的数量与成交价</span>';
+    applyBtn.style.display = 'none';
+    return;
+  }
+
+  if (action === 'sell' && qty > h.shares) {
+    preview.style.display = 'block';
+    preview.innerHTML = '<span style="color:var(--red);">卖出数量超过当前持仓 ' + formatCN(h.shares) + ' 股</span>';
+    applyBtn.style.display = 'none';
+    return;
+  }
+
+  const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
+  let newShares, newCost;
+  if (action === 'buy') {
+    newShares = h.shares + qty;
+    newCost = (h.shares * h.cost + qty * price) / newShares;
+  } else {
+    newShares = h.shares - qty;
+    newCost = (newShares > 0) ? h.cost : 0;
+  }
+
+  pendingTrade = { idx, action, qty, price };
+
+  preview.style.display = 'block';
+  preview.innerHTML =
+    '<strong>预览：' + h.name + '</strong><br>' +
+    '· 持仓股数：' + formatCN(h.shares) + ' → <strong>' + formatCN(newShares) + '</strong><br>' +
+    '· 均价：' + curSym + NUM(h.cost) + ' → <strong>' + curSym + NUM(newCost) + '</strong>';
+  applyBtn.style.display = 'inline-block';
+}
+
+function applyTrade() {
+  if (!pendingTrade) return;
+  const { idx, action, qty, price } = pendingTrade;
+  const items = tradeableHoldings();
+  const h = items[idx];
+  const cat = portfolio.attack.assets[h.catIdx];
+
+  if (action === 'buy') {
+    const newShares = h.shares + qty;
+    cat.holdings[h.holdIdx].cost = (h.shares * h.cost + qty * price) / newShares;
+    cat.holdings[h.holdIdx].shares = newShares;
+  } else {
+    const newShares = h.shares - qty;
+    cat.holdings[h.holdIdx].shares = newShares;
+  }
+
+  savePortfolio();
+  pendingTrade = null;
+  loadPortfolio();
+  openPositionManager(); // 刷新弹窗内容
+}
+
+function closePositionManager() {
+  document.getElementById('positionOverlay').style.display = 'none';
+  pendingTrade = null;
 }
 
 function getPrice(symbol) {
@@ -962,19 +1152,33 @@ function closeDefenseDetail() {
   document.getElementById('defenseOverlay').style.display = 'none';
 }
 
+// 动态市值计算：若存在 shares 则用 shares × 实时股价，否则用静态 value
+function holdingValue(h) {
+  if (!h.shares || !h.symbol) return h.value;
+  const q = getPrice(h.symbol);
+  if (!q || !q.price) return h.value;
+  return Math.round(h.shares * q.price);
+}
+function holdingRatio(h, p) {
+  if (!h.shares || !h.symbol) return h.ratio;
+  return (holdingValue(h) / p.total_assets * 100).toFixed(2);
+}
+
 function renderPositions(p) {
   // A股 & 港股
   const hk = p.attack.assets[0];
   let hkHtml = '', hkMobile = '';
   for (const h of hk.holdings) {
+    const val = holdingValue(h);
+    const rat = holdingRatio(h, p);
     if (!h.symbol) {
       const tagCls = h.tags.includes('投顾') ? 'tag-advisory' : 'tag-short';
       const tagLabel = h.tags.includes('投顾') ? '投顾' : '短期';
       hkHtml += `<tr>
         <td style="font-weight:500;">${h.name} <span style="font-size:11px;color:var(--text-muted);">${h.note}</span></td>
         <td><span class="tag ${tagCls}">${tagLabel}</span></td>
-        <td class="num">${CNY(h.value)}</td>
-        <td class="num">${h.ratio}%</td>
+        <td class="num">${CNY(val)}</td>
+        <td class="num">${rat}%</td>
         <td class="num">---</td><td class="num">---</td><td class="num">---</td><td class="num">---</td><td class="num">---</td>
       </tr>`;
       hkMobile += `<div class="pos-card">
@@ -983,8 +1187,8 @@ function renderPositions(p) {
           <span class="tag ${tagCls}">${tagLabel}</span>
         </div>
         <div class="pos-card-grid">
-          <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
-          <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(val)}</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${rat}%</span></div>
         </div>
       </div>`;
     } else {
@@ -996,8 +1200,8 @@ function renderPositions(p) {
       hkHtml += `<tr>
         <td style="font-weight:500;">${h.name}</td>
         <td>${tagEl}</td>
-        <td class="num">${CNY(h.value)}</td>
-        <td class="num">${h.ratio}%</td>
+        <td class="num">${CNY(val)}</td>
+        <td class="num">${rat}%</td>
         <td class="num">${price}${priceArrow(h.symbol)}</td>
         <td class="num">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</td>
         <td class="num">${pnl}</td>
@@ -1010,8 +1214,8 @@ function renderPositions(p) {
           ${tagEl}
         </div>
         <div class="pos-card-grid">
-          <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
-          <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(val)}</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${rat}%</span></div>
           <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${priceArrow(h.symbol)}${price}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
@@ -1027,6 +1231,8 @@ function renderPositions(p) {
   const us = p.attack.assets[1];
   let usHtml = '', usMobile = '';
   for (const h of us.holdings) {
+    const val = holdingValue(h);
+    const rat = holdingRatio(h, p);
     const { price, pe, peVal, pnl } = priceDisplay(h.symbol, h.cost, h.value);
     const peClass = peColorClass(peVal, h.target_pe);
     const tagEl = h.tags.length > 0
@@ -1035,8 +1241,8 @@ function renderPositions(p) {
     usHtml += `<tr>
       <td style="font-weight:500;">${h.name}</td>
       <td>${tagEl}</td>
-      <td class="num">${CNY(h.value)}</td>
-      <td class="num">${h.ratio}%</td>
+      <td class="num">${CNY(val)}</td>
+      <td class="num">${rat}%</td>
       <td class="num">${price}${priceArrow(h.symbol)}</td>
       <td class="num">${h.cost ? '$' + NUM(h.cost) : '---'}</td>
       <td class="num">${pnl}</td>
@@ -1049,8 +1255,8 @@ function renderPositions(p) {
         ${tagEl}
       </div>
       <div class="pos-card-grid">
-        <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
-        <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
+        <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(val)}</span></div>
+        <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${rat}%</span></div>
         <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${priceArrow(h.symbol)}${price}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? '$' + NUM(h.cost) : '---'}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
