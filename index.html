@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>家庭资产 · 仪表盘</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -164,6 +167,7 @@ tr:hover td { background: var(--surface-hover); }
 .fcn-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 .fcn-val { font-size: 13px; font-weight: 600; color: var(--text); }
 
+.watch-legend { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .watch-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .watch-card {
   border: 2px solid var(--border); border-radius: 8px; padding: 14px 16px;
@@ -308,6 +312,7 @@ tr:hover td { background: var(--surface-hover); }
   .fcn-grid .fcn-item:nth-child(2) { order: 4; }
   .fcn-grid .fcn-item:nth-child(5) { order: 5; grid-column: 1 / -1; }
 
+  .watch-legend { justify-content: space-between; gap: 0; flex-wrap: nowrap; }
   .watch-row { gap: 8px; }
   .watch-card { min-width: 0; flex: 1 1 100%; box-shadow: 2px 2px 0 var(--border); }
   .watch-card .stock-price { font-size: 18px; }
@@ -423,13 +428,11 @@ tr:hover td { background: var(--surface-hover); }
     <h2 class="watchlist-title">狩猎清单</h2>
     <span style="font-size:12px;color:var(--text-muted);">研判估值，预留安全边际</span>
   </div>
-  <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;line-height:1.8;">
-    <span class="watch-legend-row" style="white-space:nowrap;">
-      <span style="margin-right:18px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yellow);margin-right:5px;vertical-align:middle;"></span>低估</span>
-      <span style="margin-right:18px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:5px;vertical-align:middle;"></span>合理区间</span>
-      <span style="margin-right:18px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin-right:5px;vertical-align:middle;"></span>高估</span>
-    </span>
-    <span class="mobile-block"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gray);margin-right:5px;vertical-align:middle;"></span> 待评估</span>
+  <div class="watch-legend" style="font-size:11px;color:var(--text-muted);margin-bottom:16px;line-height:1.8;">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yellow);margin-right:5px;vertical-align:middle;"></span>低估</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:5px;vertical-align:middle;"></span>合理</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin-right:5px;vertical-align:middle;"></span>高估</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--gray);margin-right:5px;vertical-align:middle;"></span>待评估</span>
   </div>
   <div style="margin-bottom:16px;">
     <h3 style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">🇺🇸 美股</h3>
@@ -474,7 +477,7 @@ tr:hover td { background: var(--surface-hover); }
 <div id="positionOverlay" class="overlay" style="display:none;">
   <div class="overlay-card" style="max-width:800px;">
     <div class="overlay-header">
-      <h2>⌖ 持仓变更管理</h2>
+      <h2>持仓变更管理</h2>
       <button class="overlay-close" onclick="closePositionManager()">✕</button>
     </div>
     <div class="overlay-body" id="positionDetail"></div>
@@ -924,7 +927,7 @@ function openPositionManager(catIdx) {
     const items = tradeableHoldings(catIdx);
     const catName = (catIdx !== undefined && portfolio.attack.assets[catIdx]) ? portfolio.attack.assets[catIdx].category : '全部持仓';
     var titleEl = document.querySelector('#positionOverlay .overlay-header h2');
-    if (titleEl) titleEl.textContent = '⌖ 持仓变更 · ' + catName;
+    if (titleEl) titleEl.textContent = '持仓变更 · ' + catName;
     let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
       '<th>标的</th><th class="num">持仓股数</th><th class="num">均价</th><th class="num">现价</th><th class="num">市值(RMB)</th></tr></thead><tbody>';
     items.forEach((h) => {
@@ -1603,7 +1606,7 @@ function renderWatchlist(p) {
       const [peLow, peHigh] = w.target_pe.split('-').map(Number);
       if (q.pe < peLow) { statusCls = 'status-undervalued'; statusLabel = '低估'; }
       else if (q.pe > peHigh) { statusCls = 'status-overvalued'; statusLabel = '高估'; }
-      else { statusCls = 'status-fair'; statusLabel = '合理区间'; }
+      else { statusCls = 'status-fair'; statusLabel = '合理'; }
     } else if (w.target_mcap && q && q.mcap) {
       const m = w.target_mcap.match(/([\d.]+)-([\d.]+)万亿/);
       if (m) {
@@ -1611,7 +1614,7 @@ function renderWatchlist(p) {
         const high = parseFloat(m[2]) * 1e12;
         if (q.mcap < low) { statusCls = 'status-undervalued'; statusLabel = '低估'; }
         else if (q.mcap > high) { statusCls = 'status-overvalued'; statusLabel = '高估'; }
-        else { statusCls = 'status-fair'; statusLabel = '合理区间'; }
+        else { statusCls = 'status-fair'; statusLabel = '合理'; }
       }
     }
 

@@ -818,7 +818,7 @@ function renderWatchlist(p) {
       const [peLow, peHigh] = w.target_pe.split('-').map(Number);
       if (q.pe < peLow) { statusCls = 'status-undervalued'; statusLabel = '低估'; }
       else if (q.pe > peHigh) { statusCls = 'status-overvalued'; statusLabel = '高估'; }
-      else { statusCls = 'status-fair'; statusLabel = '合理区间'; }
+      else { statusCls = 'status-fair'; statusLabel = '合理'; }
     }
 
     html += `<div class="watch-card ${statusCls}">
