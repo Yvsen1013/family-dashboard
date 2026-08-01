@@ -367,7 +367,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>A股 & 港股 持仓</h2>
-    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
+    <button class="position-btn" onclick="openPositionManager(0)">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -387,7 +387,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>美股 持仓</h2>
-    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
+    <button class="position-btn" onclick="openPositionManager(1)">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -867,9 +867,10 @@ function savePortfolio() {
 // ───────── 持仓变更管理 ─────────
 
 // 获取所有可交易的持仓（有 shares 的）
-function tradeableHoldings() {
+function tradeableHoldings(catIdx) {
   const result = [];
   portfolio.attack.assets.forEach((cat, ci) => {
+    if (catIdx !== undefined && catIdx !== ci) return;
     if (!cat.holdings) return;
     cat.holdings.forEach((h, hi) => {
       if (h.shares && h.symbol) result.push({ ...h, catIdx: ci, holdIdx: hi, catName: cat.category });
@@ -878,12 +879,16 @@ function tradeableHoldings() {
   return result;
 }
 
-function openPositionManager() {
+function openPositionManager(catIdx) {
   var ov = document.getElementById('positionOverlay');
   var pd = document.getElementById('positionDetail');
   if (!ov || !pd) { alert('找不到弹窗元素! ov=' + !!ov + ' pd=' + !!pd); return; }
   try {
-    const items = tradeableHoldings();
+    currentCatIdx = catIdx;
+    const items = tradeableHoldings(catIdx);
+    const catName = (catIdx !== undefined && portfolio.attack.assets[catIdx]) ? portfolio.attack.assets[catIdx].category : '全部持仓';
+    var titleEl = document.querySelector('#positionOverlay .overlay-header h2');
+    if (titleEl) titleEl.textContent = '⌖ 持仓变更 · ' + catName;
     let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
       '<th>标的</th><th>市场</th><th class="num">持仓股数</th><th class="num">均价</th><th class="num">现价</th><th class="num">动态市值</th></tr></thead><tbody>';
     items.forEach((h, i) => {
@@ -941,8 +946,10 @@ function openPositionManager() {
   }
 }
 
+let currentCatIdx = null;
+
 function autoFillPrice() {
-  const items = tradeableHoldings();
+  const items = tradeableHoldings(currentCatIdx);
   const idx = parseInt(document.getElementById('txStock').value);
   const h = items[idx];
   if (!h) return;
@@ -953,7 +960,7 @@ function autoFillPrice() {
 let pendingTrade = null;
 
 function previewTrade() {
-  const items = tradeableHoldings();
+  const items = tradeableHoldings(currentCatIdx);
   const idx = parseInt(document.getElementById('txStock').value);
   const action = document.getElementById('txAction').value;
   const qty = parseInt(document.getElementById('txQty').value);
@@ -999,7 +1006,7 @@ function previewTrade() {
 function applyTrade() {
   if (!pendingTrade) return;
   const { idx, action, qty, price } = pendingTrade;
-  const items = tradeableHoldings();
+  const items = tradeableHoldings(currentCatIdx);
   const h = items[idx];
   const cat = portfolio.attack.assets[h.catIdx];
 
@@ -1015,13 +1022,14 @@ function applyTrade() {
   savePortfolio();
   pendingTrade = null;
   loadPortfolio();
-  openPositionManager(); // 刷新弹窗内容
+  openPositionManager(currentCatIdx); // 刷新弹窗内容
 }
 
 function closePositionManager() {
   var ov = document.getElementById('positionOverlay');
   if (ov) ov.style.display = 'none';
   pendingTrade = null;
+  currentCatIdx = null;
 }
 
 function getPrice(symbol) {
