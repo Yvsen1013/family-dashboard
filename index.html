@@ -981,6 +981,8 @@ function autoFillPrice() {
   if (q && q.price) document.getElementById('txPrice').value = q.price;
 }
 
+let lastUndo = null; // { catIdx, holdIdx, oldShares, oldCost }
+
 function confirmTrade() {
   const items = tradeableHoldings(currentCatIdx);
   const idx = parseInt(document.getElementById('txStock').value);
@@ -1001,6 +1003,9 @@ function confirmTrade() {
     preview.innerHTML = '<span style="color:var(--red);">卖出数量超过当前持仓 ' + formatCN(h.shares) + ' 股</span>';
     return;
   }
+
+  // 保存撤销快照
+  lastUndo = { catIdx: h.catIdx, holdIdx: h.holdIdx, oldShares: h.shares, oldCost: h.cost };
 
   const curSym = h.symbol.includes('.HK') ? 'HK$' : h.market === 'US' ? '$' : '¥';
   let newShares, newCost;
@@ -1025,17 +1030,37 @@ function confirmTrade() {
   loadPortfolio();
   openPositionManager(currentCatIdx); // 刷新弹窗
 
-  // 显示结果
+  // 显示结果 + 撤销按钮
   preview.style.display = 'block';
   preview.innerHTML =
     '<span style="color:var(--green);">✓ 已' + (action === 'buy' ? '买入' : '卖出') + ' ' + h.name + ' ' + formatCN(qty) + ' 股，'
-    + '均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>';
+    + '均价 ' + curSym + NUM(newCost) + '，持仓 ' + formatCN(newShares) + ' 股</span>'
+    + ' <button onclick="undoLastTrade()" style="margin-left:12px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;color:var(--text-secondary);box-shadow:1px 1px 0 var(--border);">撤销</button>';
+}
+
+function undoLastTrade() {
+  if (!lastUndo || !portfolio) return;
+  const { catIdx, holdIdx, oldShares, oldCost } = lastUndo;
+  const cat = portfolio.attack.assets[catIdx];
+  if (!cat || !cat.holdings[holdIdx]) return;
+  cat.holdings[holdIdx].shares = oldShares;
+  cat.holdings[holdIdx].cost = oldCost;
+  lastUndo = null;
+  savePortfolio();
+  loadPortfolio();
+  openPositionManager(currentCatIdx);
+  const preview = document.getElementById('txPreview');
+  if (preview) {
+    preview.style.display = 'block';
+    preview.innerHTML = '<span style="color:var(--text-secondary);">↩ 已撤销，恢复至变更前状态</span>';
+  }
 }
 
 function closePositionManager() {
   var ov = document.getElementById('positionOverlay');
   if (ov) ov.style.display = 'none';
   currentCatIdx = null;
+  lastUndo = null;
 }
 
 function getPrice(symbol) {
