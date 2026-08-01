@@ -523,7 +523,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 3;
+const PORTFOLIO_DATA_VERSION = 4;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -605,7 +605,7 @@ const EMBEDDED_PORTFOLIO = {
             "name": "农夫山泉",
             "symbol": "9633.HK",
             "market": "HK",
-            "target_pe": null,
+            "target_pe": "20-25",
             "target_price": null,
             "note": ""
           },
