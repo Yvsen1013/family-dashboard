@@ -367,7 +367,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>A股 & 港股 持仓</h2>
-    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
+    <button class="position-btn" onclick="(function(){try{openPositionManager()}catch(e){console.error(e);alert('持仓变更出错: '+e.message)}})()">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -387,7 +387,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2>美股 持仓</h2>
-    <button class="position-btn" onclick="openPositionManager()">持仓变更</button>
+    <button class="position-btn" onclick="(function(){try{openPositionManager()}catch(e){console.error(e);alert('持仓变更出错: '+e.message)}})()">持仓变更</button>
   </div>
   <div class="table-wrap">
   <table>
@@ -879,6 +879,7 @@ function tradeableHoldings() {
 
 function openPositionManager() {
   const items = tradeableHoldings();
+  console.log('openPositionManager called, items:', items.length);
   let html = '<div class="pos-mgr-table-wrap"><table class="pos-mgr-table"><thead><tr>' +
     '<th>标的</th><th>市场</th><th class="num">持仓股数</th><th class="num">均价</th><th class="num">现价</th><th class="num">动态市值</th></tr></thead><tbody>';
   items.forEach((h, i) => {
