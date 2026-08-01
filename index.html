@@ -788,6 +788,14 @@ function getPrice(symbol) {
   return { price: q.price, pe: q.pe, change_pct: q.change_pct, prev_close: q.previous_close, currency: q.currency, mcap: q.market_cap };
 }
 
+function priceArrow(symbol) {
+  const q = getPrice(symbol);
+  if (!q || !q.price || !q.prev_close) return '';
+  if (q.price > q.prev_close) return ' <span class="green" style="font-size:12px;">\u2191</span>';
+  if (q.price < q.prev_close) return ' <span class="red" style="font-size:12px;">\u2193</span>';
+  return '';
+}
+
 function peColorClass(peVal, targetPe) {
   if (peVal == null || !targetPe) return '';
   const [lo, hi] = targetPe.split('-').map(Number);
@@ -950,7 +958,7 @@ function renderPositions(p) {
         <td>${tagEl}</td>
         <td class="num">${CNY(h.value)}</td>
         <td class="num">${h.ratio}%</td>
-        <td class="num">${price}</td>
+        <td class="num">${price}${priceArrow(h.symbol)}</td>
         <td class="num">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</td>
         <td class="num">${pnl}</td>
         <td class="num"><span class="${peClass}">${pe}</span></td>
@@ -964,7 +972,7 @@ function renderPositions(p) {
         <div class="pos-card-grid">
           <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
-          <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}</span></div>
+          <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}${priceArrow(h.symbol)}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? (h.symbol.includes('.HK') ? 'HK$' : '¥') + NUM(h.cost) : '---'}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
           <div class="pos-card-item"><span class="pos-card-label">PE / 合理</span><span class="pos-card-val"><span class="${peClass}">${pe}</span> / ${h.target_pe || '---'}</span></div>
@@ -989,7 +997,7 @@ function renderPositions(p) {
       <td>${tagEl}</td>
       <td class="num">${CNY(h.value)}</td>
       <td class="num">${h.ratio}%</td>
-      <td class="num">${price}</td>
+      <td class="num">${price}${priceArrow(h.symbol)}</td>
       <td class="num">${h.cost ? '$' + NUM(h.cost) : '---'}</td>
       <td class="num">${pnl}</td>
       <td class="num"><span class="${peClass}">${pe}</span></td>
@@ -1003,7 +1011,7 @@ function renderPositions(p) {
       <div class="pos-card-grid">
         <div class="pos-card-item"><span class="pos-card-label">市值</span><span class="pos-card-val">${CNY(h.value)}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">仓位</span><span class="pos-card-val">${h.ratio}%</span></div>
-        <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}</span></div>
+        <div class="pos-card-item"><span class="pos-card-label">现价</span><span class="pos-card-val">${price}${priceArrow(h.symbol)}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">成本</span><span class="pos-card-val">${h.cost ? '$' + NUM(h.cost) : '---'}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">浮盈/亏</span><span class="pos-card-val">${pnl}</span></div>
         <div class="pos-card-item"><span class="pos-card-label">PE / 合理</span><span class="pos-card-val"><span class="${peClass}">${pe}</span> / ${h.target_pe || '---'}</span></div>
