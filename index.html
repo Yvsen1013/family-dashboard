@@ -1730,14 +1730,18 @@ function renderFCN(p) {
   for (const c of fcn.fcn_contracts) {
     const expiry = new Date(c.expiry + 'T00:00:00');
     const daysLeft = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
-    let daysCls = 'safe';
-    if (daysLeft <= 7) daysCls = 'urgent';
-    else if (daysLeft <= 30) daysCls = 'soon';
 
     const q = prices[c.symbol];
     const currentPrice = q ? q.price : null;
     const aboveStrike = currentPrice && currentPrice > c.strike;
     const margin = currentPrice ? ((currentPrice - c.strike) / c.strike * 100) : null;
+    // 到期标签颜色按现价vs行权价：>10%绿色，0~10%黄色，<0红色
+    let daysCls = 'safe';
+    if (currentPrice) {
+      if (currentPrice > c.strike * 1.1) daysCls = 'safe';
+      else if (currentPrice > c.strike) daysCls = 'soon';
+      else daysCls = 'urgent';
+    }
     const statusCls = aboveStrike ? 'status-safe' : 'status-danger';
     const statusLabel = aboveStrike
       ? '安全 (现价高于行权价 ' + margin.toFixed(1) + '%)'
