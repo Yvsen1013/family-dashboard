@@ -601,25 +601,16 @@ function setDiag(msg) {
 
 const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
 const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
-// 统一金额渲染，小数点对齐（整数部分右对齐 + .XX 固定 2.2ch 宽度）
-// intOnly: 整数模式（右对齐，无小数）| 默认：小数对齐模式
-const CNY = (n, intOnly) => {
+const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, true) : formatCNDec(n));
+// 带小数点对齐的金额显示——整数部分右对齐 + 固定宽度小数部分（仅防守资产明细使用）
+const CNYalign = (n) => {
   if (n == null) return '---';
-  if (intOnly) {
-    return '<span style="font-variant-numeric:tabular-nums;">¥' + formatCN(n, true) + '</span>';
-  }
-  // 始终使用 .toFixed(2) 然后拆分，确保每一行都有 .XX
-  const s = Number(n).toFixed(2);
+  const s = formatCNDec(n);
   const dotIdx = s.indexOf('.');
-  const intRaw = s.substring(0, dotIdx);
-  const decPart = s.substring(dotIdx);  // ".67"
-  // 千分位格式化
-  let formatted = ''; let count = 0;
-  for (let i = intRaw.length - 1; i >= 0; i--) {
-    formatted = intRaw[i] + formatted; count++;
-    if (count === 4 && i > 0) { formatted = ',' + formatted; count = 0; }
-  }
-  return '<span style="display:inline-flex;font-variant-numeric:tabular-nums;"><span>¥' + formatted + '</span><span style="width:2.2ch;text-align:left;">' + decPart + '</span></span>';
+  if (dotIdx < 0) return '<span style="display:inline-flex;justify-content:flex-end;"><span>¥' + s + '</span><span style="width:2ch;text-align:left;"></span></span>';
+  const intPart = s.substring(0, dotIdx);
+  const decPart = s.substring(dotIdx);
+  return '<span style="display:inline-flex;justify-content:flex-end;"><span>¥' + intPart + '</span><span style="width:2.2ch;text-align:left;">' + decPart + '</span></span>';
 };
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
@@ -1745,8 +1736,8 @@ function priceDisplay(symbol, cost, value, shares) {
 function renderMetrics(p) {
   const attackTotal = computeAttackTotal();
   const totalAssets = computeTotalAssets();
-  document.getElementById('totalAssets').innerHTML = CNY(totalAssets, true);
-  document.getElementById('attackAssets').innerHTML = CNY(attackTotal, true);
+  document.getElementById('totalAssets').textContent = CNY(totalAssets, true);
+  document.getElementById('attackAssets').textContent = CNY(attackTotal, true);
   document.getElementById('attackRatio').textContent = '占总资产 ' + (attackTotal / totalAssets * 100).toFixed(1) + '%';
   const fcnGroup = p.attack.assets[2];
   let fcnMonthly = 0;
@@ -1773,13 +1764,13 @@ function renderMetrics(p) {
       }
     }
   }
-  document.getElementById('fcnAssets').innerHTML = CNY(Math.round(fcnMonthly), true);
+  document.getElementById('fcnAssets').textContent = CNY(Math.round(fcnMonthly), true);
   if (nearestExpiryMonth !== null) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
   document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block"> (' + nearestDays + '天)</span>' : '';
   const defenseDynamic = computeDefenseDynamic();
-  document.getElementById('defenseAssets').innerHTML = CNY(defenseDynamic, true);
+  document.getElementById('defenseAssets').textContent = CNY(defenseDynamic, true);
   document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / totalAssets * 100).toFixed(1) + '%';
   renderQimingVC();
 }
@@ -1787,7 +1778,7 @@ function renderMetrics(p) {
 function renderQimingVC() {
   if (!portfolio || !portfolio.illiquid) return;
   const ill = portfolio.illiquid;
-  document.getElementById('qimingValue').innerHTML = CNY(ill.value, true);
+  document.getElementById('qimingValue').textContent = CNY(ill.value, true);
   document.getElementById('qimingNote').innerHTML = '占总资产 ' + (ill.value / computeTotalAssets() * 100).toFixed(1) + '%<span class="mobile-block"> (不计入可配置资产)</span>';
 }
 
@@ -1818,7 +1809,7 @@ function showDefenseDetail() {
       const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);"> (前日银行金条 ¥' + goldPerGram + '/g)</span>' : '';
       html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;">
         <span style="font-weight:500;">${a.name}${priceNote}</span>
-        <span>${CNY(itemValue)}<span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
+        <span>${CNYalign(itemValue)}<span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
       </div>`;
     }
   }
