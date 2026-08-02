@@ -2118,7 +2118,7 @@ function showReturnsDetail() {
         html += `<div class="returns-row">
           <span class="returns-label">${p.label}</span>
           <div style="text-align:right;">
-            <div class="${cls} returns-value">${sign}¥${formatCN(r.amount)}</div>
+            <div class="${cls} returns-value">¥${formatCN(r.amount)}</div>
             <div class="${cls} returns-pct">${sign}${r.pct.toFixed(2)}%</div>
           </div>
         </div>`;
