@@ -1031,7 +1031,10 @@ let lastCloudSaveTime = 0;
 
 async function loadPortfolioFromCloud() {
   try {
-    const resp = await fetch(CLOUD_BLOB_URL + '?t=' + Date.now());
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
+    const resp = await fetch(CLOUD_BLOB_URL + '?t=' + Date.now(), { signal: ctrl.signal });
+    clearTimeout(timer);
     if (!resp.ok) return null;
     const blob = await resp.json();
     if (blob && blob.data) return { data: blob.data, updated_at: blob.lastModified };
@@ -1043,11 +1046,15 @@ async function savePortfolioToCloud() {
   try {
     if (!localLastModified) localLastModified = new Date().toISOString();
     const payload = { lastModified: localLastModified, data: portfolio };
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
     const resp = await fetch(CLOUD_BLOB_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
     });
+    clearTimeout(timer);
     if (resp.ok) {
       cloudLastModified = localLastModified;
       lastCloudSaveTime = Date.now();
@@ -2380,16 +2387,20 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
 });
 
 // 启动：先获取汇率，再加载持仓数据和股价
-fetchFX().then(async () => {
+fetchFX().then(() => {
   loadPortfolio();
-  // 云端同步：首次拉取，必须等完成后再拉股价，确保新增标的已注册
-  await syncFromCloud();
+  // 立即拉取股价——不等待云端同步，避免海外 jsonblob 响应慢导致股价迟迟不显示
+  loadPrices();
+  // 云端同步：首次拉取 + 每30秒轮询
   setInterval(syncFromCloud, 30000);
-  loadRemoteSnapshots().then(() => {
-    loadPrices().then(() => {
+  // 同步完成后刷新一次行情，确保新增标的（如狩猎清单新目标）也能拉到股价
+  syncFromCloud().then(() => {
+    loadPrices(true).then(() => {
       recordSnapshot();
     });
   });
+  // 拉取历史收益快照（不阻塞股价加载）
+  loadRemoteSnapshots();
 });
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
