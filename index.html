@@ -1012,12 +1012,20 @@ async function loadPrices(force) {
   try {
     const codes = getFullQtCodes();
     let results;
-    try {
-      results = await fetchTencentQuotes(codes);
-    } catch(e) {
-      // fetch 失败（file:// 等跨域受限）→ 降级为 script 注入
-      console.warn('fetch 行情失败，降级 script 注入:', e && e.message);
+    var mode = '';
+    if (location.protocol === 'file:') {
+      // file:// 直接打开：浏览器拦截跨域 fetch，直接用 script 标签注入（不受 CORS 限制）
+      mode = 'script';
       results = await scriptTencentQuotes(codes);
+    } else {
+      try {
+        mode = 'fetch';
+        results = await fetchTencentQuotes(codes);
+      } catch(e) {
+        console.warn('fetch 行情失败，降级 script 注入:', e && e.message);
+        mode = 'script(fallback)';
+        results = await scriptTencentQuotes(codes);
+      }
     }
     if (Object.keys(results).length > 0) {
       prices = results;
@@ -1028,10 +1036,13 @@ async function loadPrices(force) {
       renderFCN(portfolio);
       renderWatchlist(portfolio);
       renderQimingVC();
+    } else {
+      document.getElementById('priceStatus').innerHTML =
+        '<span style="color:var(--amber);">行情数据为空 [' + mode + ']</span>';
     }
   } catch(e) {
     document.getElementById('priceStatus').innerHTML =
-      '<span style="color:var(--amber);">股价更新失败，60秒后重试</span>';
+      '<span style="color:var(--amber);">股价加载失败: ' + ((e && e.message) || e) + '</span>';
     // 即使股价获取失败，也刷新FCN天数等不依赖股价的UI
     renderMetrics(portfolio);
     renderFCN(portfolio);
