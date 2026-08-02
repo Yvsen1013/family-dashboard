@@ -644,7 +644,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 7;
+const PORTFOLIO_DATA_VERSION = 8;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -894,7 +894,8 @@ const EMBEDDED_PORTFOLIO = {
         "name": "实物黄金，300g",
         "value": 270000,
         "ratio": 3.59,
-        "type": "黄金"
+        "type": "黄金",
+        "grams": 300
       },
       {
         "name": "货币基金 - 我",
@@ -1785,32 +1786,50 @@ function renderQimingVC() {
 function showDefenseDetail() {
   if (!portfolio || !portfolio.defense) return;
   const d = portfolio.defense;
-  // 用于黄金明细展示
-  const goldQ = prices['GOLD'];
-  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-  const goldPerGram = Math.round(au9999PerGram * 1.08);
-  const goldValue = 300 * goldPerGram;
+  const goldPerGram = getGoldPerGram();
+  const totalAssets = computeTotalAssets();
   let html = '';
 
   const groups = {};
-  for (const a of d.assets) {
+  for (const [idx, a] of d.assets.entries()) {
     if (!groups[a.type]) groups[a.type] = [];
-    groups[a.type].push(a);
+    groups[a.type].push({ ...a, idx });
   }
 
   const typeNames = { '固收': '固收+产品', '黄金': '黄金', '现金': '现金' };
   const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
-  html += '<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:30px;align-items:baseline;">';
+  html += '<div style="display:grid;grid-template-columns:1fr auto auto auto;column-gap:16px;align-items:baseline;">';
   for (const [type, items] of Object.entries(groups)) {
     html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
-      const itemValue = isGold ? goldValue : a.value;
+      const itemValue = isGold ? getGoldValue(a) : (a.value || 0);
       const priceNote = isGold ? '<br><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">（前日银行金条价格：¥' + goldPerGram + '/g）</span>' : '';
+      const ratio = totalAssets ? (itemValue / totalAssets * 100).toFixed(2) : '0.00';
+
+      // 编辑列：黄金改克数，其他改金额
+      let editHtml = '';
+      if (isGold) {
+        editHtml = `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
+          <input type="number" value="${a.grams || 300}" min="0" step="1"
+            onchange="updateDefenseAsset(${a.idx}, 'grams', this.value)"
+            style="width:56px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+          g
+        </span>`;
+      } else {
+        editHtml = `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
+          ¥
+          <input type="number" value="${a.value || 0}" min="0" step="1"
+            onchange="updateDefenseAsset(${a.idx}, 'value', this.value)"
+            style="width:80px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+        </span>`;
+      }
+
       html += `<span style="font-weight:500;padding:3px 0;">${a.name}${priceNote}</span>`;
+      html += editHtml;
       html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue)}</span>`;
-      html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${a.ratio}%</span>`;
+      html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${ratio}%</span>`;
     }
   }
   html += '</div>';
@@ -1821,6 +1840,37 @@ function showDefenseDetail() {
 
 function closeDefenseDetail() {
   document.getElementById('defenseOverlay').style.display = 'none';
+}
+
+// 更新防守资产金额或黄金克数，并重新计算占比
+function updateDefenseAsset(idx, field, value) {
+  if (!portfolio || !portfolio.defense || !portfolio.defense.assets[idx]) return;
+  const num = parseFloat(value);
+  if (Number.isNaN(num) || num < 0) return;
+
+  const asset = portfolio.defense.assets[idx];
+  if (field === 'value') {
+    asset.value = Math.round(num);
+  } else if (field === 'grams') {
+    asset.grams = Math.round(num);
+    // 同步更新静态 value，便于其他地方读取
+    asset.value = getGoldValue(asset);
+  }
+
+  // 重新计算防守总资产
+  portfolio.defense.total = computeDefenseDynamic();
+
+  // 重新计算各防守资产占总资产比例
+  const totalAssets = computeTotalAssets();
+  for (const a of portfolio.defense.assets) {
+    const v = a.name.includes('黄金') ? getGoldValue(a) : (a.value || 0);
+    a.ratio = parseFloat((v / totalAssets * 100).toFixed(2));
+  }
+
+  savePortfolio();
+  renderMetrics(portfolio);
+  renderPositions(portfolio);
+  showDefenseDetail();
 }
 
 // 动态市值计算：若存在 shares 则用 shares × 实时股价 × 汇率 → RMB
@@ -1857,15 +1907,27 @@ function computeAttackTotal() {
   return total;
 }
 
+// 获取当前银行金条每克价格（基于前日 AU9999 金价 + 8% 溢价）
+function getGoldPerGram() {
+  const goldQ = prices['GOLD'];
+  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
+  return Math.round(au9999PerGram * 1.08);
+}
+
+// 计算黄金资产当前市值
+function getGoldValue(asset) {
+  const grams = asset && asset.grams ? asset.grams : 300;
+  return grams * getGoldPerGram();
+}
+
 // 动态计算防守资产(含黄金实时价格)
 function computeDefenseDynamic() {
   if (!portfolio.defense) return 0;
-  const goldQ = prices['GOLD'];
-  const au9999PerGram = (goldQ && goldQ.prev_close) ? goldQ.prev_close * 100 : 900;
-  const goldPerGram = Math.round(au9999PerGram * 1.08);
-  const goldValue = 300 * goldPerGram;
-  const defenseBase = portfolio.defense.total - 270000; // 扣除静态黄金值
-  return defenseBase + goldValue;
+  let total = 0;
+  for (const a of portfolio.defense.assets) {
+    total += a.name.includes('黄金') ? getGoldValue(a) : (a.value || 0);
+  }
+  return total;
 }
 
 // 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明剩余
