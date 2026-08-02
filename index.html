@@ -1825,6 +1825,7 @@ function renderWatchlist(p) {
       ${w.target_price ? '<div class="stock-target">目标: ' + w.target_price + '</div>' : ''}
       ${w.target_pe ? '<div class="stock-target">PE目标区间: ' + w.target_pe + '</div>' : ''}
       ${w.target_mcap ? '<div class="stock-target">目标市值: ' + w.target_mcap + '</div>' : ''}
+      ${(!w.target_price && !w.target_pe && !w.target_mcap) ? '<div class="stock-target">PE目标区间: </div>' : ''}
     </div>`;
   }
 
