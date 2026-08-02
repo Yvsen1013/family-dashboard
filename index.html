@@ -1801,18 +1801,19 @@ function showDefenseDetail() {
   const typeNames = { '固收': '固收+产品', '黄金': '黄金', '现金': '现金及等价物' };
   const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
+  html += '<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:30px;align-items:baseline;">';
   for (const [type, items] of Object.entries(groups)) {
-    html += `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
+    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? goldValue : a.value;
       const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);"> (前日银行金条 ¥' + goldPerGram + '/g)</span>' : '';
-      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;">
-        <span style="font-weight:500;">${a.name}${priceNote}</span>
-        <span>${CNYalign(itemValue)}<span style="color:var(--text-muted);font-size:12px;margin-left:30px;">${a.ratio}%</span></span>
-      </div>`;
+      html += `<span style="font-weight:500;padding:3px 0;">${a.name}${priceNote}</span>`;
+      html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue)}</span>`;
+      html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${a.ratio}%</span>`;
     }
   }
+  html += '</div>';
 
   document.getElementById('defenseDetail').innerHTML = html;
   document.getElementById('defenseOverlay').style.display = 'flex';
