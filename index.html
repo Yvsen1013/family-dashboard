@@ -936,13 +936,17 @@ async function loadPrices(force) {
     const buf = await resp.arrayBuffer();
     const text = new TextDecoder('gbk').decode(buf);
     const results = {};
+    // 构建包含静态+动态映射的反向查找表
+    const fullReverse = {};
+    for (const [k,v] of Object.entries(QT_MAP)) fullReverse[v] = k;
+    for (const [k,v] of Object.entries(DYNAMIC_QT_MAP)) fullReverse[v] = k;
     for (const line of text.split('\n')) {
       const m = line.match(/^v_(\w+)="([^"]*)"/);
       if (!m) continue;
       const qtCode = m[1], raw = m[2];
       const f = raw.split('~');
       if (f.length < 40) continue;
-      const symbol = QT_REVERSE[qtCode];
+      const symbol = fullReverse[qtCode];
       if (!symbol) continue;
       const price = safeFloat(f[3]);
       const prev = safeFloat(f[4]);
