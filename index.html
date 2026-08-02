@@ -1807,7 +1807,7 @@ function showDefenseDetail() {
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? goldValue : a.value;
-      const priceNote = isGold ? '<br><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">（前日银行金条，¥' + goldPerGram + '/g）</span>' : '';
+      const priceNote = isGold ? '<br><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">（前日银行金条价格：¥' + goldPerGram + '/g）</span>' : '';
       html += `<span style="font-weight:500;padding:3px 0;">${a.name}${priceNote}</span>`;
       html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue)}</span>`;
       html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${a.ratio}%</span>`;
