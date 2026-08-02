@@ -1498,6 +1498,12 @@ let DYNAMIC_QT_MAP = {};
 
 function loadDynamicQtMap() {
   try { const s = localStorage.getItem('dynamic_qt_map'); if (s) DYNAMIC_QT_MAP = JSON.parse(s); } catch(e) {}
+  // 清理被污染条目：symbol 已在静态 QT_MAP 中且有冲突的 qtCode
+  let dirty = false;
+  for (const [sym, code] of Object.entries(DYNAMIC_QT_MAP)) {
+    if (QT_MAP[sym] && QT_MAP[sym] !== code) { delete DYNAMIC_QT_MAP[sym]; dirty = true; }
+  }
+  if (dirty) saveDynamicQtMap();
 }
 function saveDynamicQtMap() { localStorage.setItem('dynamic_qt_map', JSON.stringify(DYNAMIC_QT_MAP)); }
 function getFullQtCodes() {
@@ -1505,8 +1511,8 @@ function getFullQtCodes() {
   if (portfolio && portfolio.attack && portfolio.attack.assets) {
     for (const ag of portfolio.attack.assets) {
       const scan = [];
-      if (ag.holdings) for (const h of ag.holdings) if (h.symbol) scan.push({ symbol: h.symbol, market: h.market || ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN' });
-      if (ag.watchlist) for (const w of ag.watchlist) if (w.symbol) scan.push({ symbol: w.symbol, market: w.market || ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN' });
+      if (ag.holdings) for (const h of ag.holdings) if (h.symbol) scan.push({ symbol: h.symbol, market: h.market || (ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN') });
+      if (ag.watchlist) for (const w of ag.watchlist) if (w.symbol) scan.push({ symbol: w.symbol, market: w.market || (ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN') });
       for (const s of scan) {
         if (QT_MAP[s.symbol] || DYNAMIC_QT_MAP[s.symbol]) continue;
         const qtCode = buildQtCode(s.symbol, s.market.toUpperCase());
@@ -1516,7 +1522,12 @@ function getFullQtCodes() {
     // 如果有新注册的 symbol，持久化到 localStorage
     saveDynamicQtMap();
   }
-  return [...Object.values(QT_MAP), ...Object.values(DYNAMIC_QT_MAP)].join(',');
+  // 合并去重：QT_MAP 优先，DYNAMIC_QT_MAP 中已在 QT_MAP 的 symbol 不重复加入
+  const allCodes = new Set(Object.values(QT_MAP));
+  for (const [sym, code] of Object.entries(DYNAMIC_QT_MAP)) {
+    if (!QT_MAP[sym]) allCodes.add(code);
+  }
+  return [...allCodes].join(',');
 }
 
 function buildPortfolioSymbol(code, market) {
