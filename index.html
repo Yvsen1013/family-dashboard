@@ -172,8 +172,20 @@ tr:hover td { background: var(--surface-hover); }
 .watch-card {
   border: 2px solid var(--border); border-radius: 8px; padding: 14px 16px;
   background: var(--surface-hover); min-width: 200px; flex: 0 0 auto;
-  box-shadow: 3px 3px 0 var(--border);
+  box-shadow: 3px 3px 0 var(--border); position: relative;
 }
+.watch-card-delete {
+  position: absolute; top: 6px; right: 6px;
+  width: 20px; height: 20px; border-radius: 4px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-muted); font-size: 12px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 150ms ease, background 150ms ease;
+}
+.watch-card:hover .watch-card-delete,
+.watch-card:active .watch-card-delete { opacity: 0.6; }
+.watch-card-delete:hover { opacity: 1 !important; background: rgba(207,75,60,0.15); color: var(--red); }
+.watch-card-delete:active { transform: scale(0.9); }
 .watch-card .stock-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .watch-card .stock-symbol { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
 .watch-card .stock-price { font-size: 20px; font-weight: 400; font-family: var(--num-font); letter-spacing: 1px; }
@@ -320,6 +332,7 @@ tr:hover td { background: var(--surface-hover); }
   .watch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .watch-card { min-width: 0; min-height: 128px; box-shadow: 2px 2px 0 var(--border); }
   .watch-card .stock-price { font-size: 18px; }
+  .watch-card-delete { opacity: 0.4; }
 
   .mobile-block { display: block; }
 
@@ -517,6 +530,22 @@ tr:hover td { background: var(--surface-hover); }
       <div id="fcnPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>
       <div style="margin-top:16px;text-align:right;">
         <button id="fcnConfirmBtn" onclick="confirmAddFcn()" style="padding:8px 20px;background:var(--green);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认新增</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 删除狩猎标的确认弹窗 -->
+<div id="deleteWatchOverlay" class="overlay" style="display:none;">
+  <div class="overlay-card" style="max-width:400px;text-align:center;">
+    <div class="overlay-header" style="justify-content:center;">
+      <h2 style="font-size:16px;">确认不再追踪</h2>
+    </div>
+    <div class="overlay-body">
+      <p id="deleteWatchMsg" style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;"></p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button onclick="closeDeleteWatch()" style="padding:8px 24px;border:2px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-family:var(--font);font-size:14px;box-shadow:2px 2px 0 var(--border);">取消</button>
+        <button id="deleteWatchConfirmBtn" onclick="doDeleteWatch()" style="padding:8px 24px;border:2px solid var(--red);border-radius:8px;background:var(--red);color:#fff;cursor:pointer;font-family:var(--font);font-size:14px;box-shadow:2px 2px 0 var(--border);font-weight:600;">确认删除</button>
       </div>
     </div>
   </div>
@@ -1819,6 +1848,7 @@ function renderWatchlist(p) {
     }
 
     return `<div class="watch-card ${statusCls}">
+      <button class="watch-card-delete" onclick="confirmDeleteWatch('${w.symbol}','${w.name.replace(/'/g,'\\\'')}')" title="不再追踪">✕</button>
       <div class="stock-name">${w.name} ${w.note ? '<span style="font-size:11px;color:var(--text-muted);"> (' + w.note + ')</span>' : ''}</div>
       <div class="stock-symbol">${w.symbol || '---'} · ${w.market}</div>
       <div class="stock-price">${priceStr}</div>
@@ -1834,6 +1864,40 @@ function renderWatchlist(p) {
   document.getElementById('watchlistUS').innerHTML = usItems.length > 0 ? usItems.map(buildCard).join('') : '<span style="color:var(--text-muted);font-size:12px;">暂无</span>';
   document.getElementById('watchlistHK').innerHTML = (groups['HK'] || []).length > 0 ? groups['HK'].map(buildCard).join('') : '<span style="color:var(--text-muted);font-size:12px;">暂无</span>';
   document.getElementById('watchlistCN').innerHTML = (groups['CN'] || []).length > 0 ? groups['CN'].map(buildCard).join('') : '<span style="color:var(--text-muted);font-size:12px;">暂无</span>';
+}
+
+// ───────── 狩猎清单删除 ─────────
+let pendingDeleteSymbol = null;
+let pendingDeleteName = null;
+
+function confirmDeleteWatch(symbol, name) {
+  pendingDeleteSymbol = symbol;
+  pendingDeleteName = name;
+  document.getElementById('deleteWatchMsg').textContent =
+    '确认不再追踪「' + name + '（' + symbol + '）」？删除后将从狩猎清单中移除。';
+  document.getElementById('deleteWatchOverlay').style.display = 'flex';
+}
+
+function closeDeleteWatch() {
+  document.getElementById('deleteWatchOverlay').style.display = 'none';
+  pendingDeleteSymbol = null;
+  pendingDeleteName = null;
+}
+
+function doDeleteWatch() {
+  if (!pendingDeleteSymbol) return;
+  for (const assetGroup of portfolio.attack.assets) {
+    if (assetGroup.watchlist) {
+      const idx = assetGroup.watchlist.findIndex(function(w) { return w.symbol === pendingDeleteSymbol; });
+      if (idx !== -1) {
+        assetGroup.watchlist.splice(idx, 1);
+        break;
+      }
+    }
+  }
+  savePortfolio();
+  renderWatchlist(portfolio);
+  closeDeleteWatch();
 }
 
 // 快照管理
