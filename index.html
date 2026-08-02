@@ -1482,7 +1482,24 @@ function loadDynamicQtMap() {
   try { const s = localStorage.getItem('dynamic_qt_map'); if (s) DYNAMIC_QT_MAP = JSON.parse(s); } catch(e) {}
 }
 function saveDynamicQtMap() { localStorage.setItem('dynamic_qt_map', JSON.stringify(DYNAMIC_QT_MAP)); }
-function getFullQtCodes() { return [...Object.values(QT_MAP), ...Object.values(DYNAMIC_QT_MAP)].join(','); }
+function getFullQtCodes() {
+  // 扫描持仓 + 狩猎清单，自动补注册未在映射表中的 symbol
+  if (portfolio && portfolio.attack && portfolio.attack.assets) {
+    for (const ag of portfolio.attack.assets) {
+      const scan = [];
+      if (ag.holdings) for (const h of ag.holdings) if (h.symbol) scan.push({ symbol: h.symbol, market: h.market || ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN' });
+      if (ag.watchlist) for (const w of ag.watchlist) if (w.symbol) scan.push({ symbol: w.symbol, market: w.market || ag.category === '美股' ? 'US' : ag.category === '港股' ? 'HK' : 'CN' });
+      for (const s of scan) {
+        if (QT_MAP[s.symbol] || DYNAMIC_QT_MAP[s.symbol]) continue;
+        const qtCode = buildQtCode(s.symbol, s.market.toUpperCase());
+        if (qtCode) { DYNAMIC_QT_MAP[s.symbol] = qtCode; }
+      }
+    }
+    // 如果有新注册的 symbol，持久化到 localStorage
+    saveDynamicQtMap();
+  }
+  return [...Object.values(QT_MAP), ...Object.values(DYNAMIC_QT_MAP)].join(',');
+}
 
 function buildPortfolioSymbol(code, market) {
   const m = market.toUpperCase();
