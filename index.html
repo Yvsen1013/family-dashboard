@@ -943,36 +943,81 @@ const QT_CODES = Object.values(QT_MAP).join(',');
 
 function safeFloat(s) { const n = parseFloat(s); return isNaN(n) ? null : n; }
 
+// ── 腾讯行情解析（共享） ──
+function parseTencentQuotes(lines) {
+  const results = {};
+  // 构建包含静态+动态映射的反向查找表
+  const fullReverse = {};
+  for (const [k,v] of Object.entries(QT_MAP)) fullReverse[v] = k;
+  for (const [k,v] of Object.entries(DYNAMIC_QT_MAP)) fullReverse[v] = k;
+  for (const line of lines) {
+    const m = line.match(/^v_(\w+)="([^"]*)"/);
+    if (!m) continue;
+    const qtCode = m[1], raw = m[2];
+    const f = raw.split('~');
+    if (f.length < 40) continue;
+    const symbol = fullReverse[qtCode];
+    if (!symbol) continue;
+    const price = safeFloat(f[3]);
+    const prev = safeFloat(f[4]);
+    const pe = safeFloat(f[39]);
+    const mcap = safeFloat(f[45]) * 1e8; // f[45]是总市值(亿)，转成元
+    let currency = 'CNY';
+    if (qtCode.startsWith('hk')) currency = 'HKD';
+    else if (qtCode.startsWith('us')) currency = 'USD';
+    results[symbol] = {
+      name: f[1], price, prev_close: prev, pe, market_cap: mcap, currency,
+      change_pct: (price && prev && prev !== 0) ? +((price-prev)/prev*100).toFixed(2) : null
+    };
+  }
+  return results;
+}
+
+// 方式1：fetch（https 域名下正常）
+async function fetchTencentQuotes(codes) {
+  const resp = await fetch('https://qt.gtimg.cn/q=' + codes);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const buf = await resp.arrayBuffer();
+  const text = new TextDecoder('gbk').decode(buf);
+  return parseTencentQuotes(text.split('\n'));
+}
+
+// 方式2：script 标签注入（file:// 直接打开等跨域受限场景的降级方案）
+// <script> 加载外部 JS 不受 CORS 限制，腾讯返回的 v_xxx="..." 会作为全局变量可用
+function scriptTencentQuotes(codes) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://qt.gtimg.cn/q=' + codes + '&_t=' + Date.now();
+    s.onload = () => {
+      try {
+        const lines = [];
+        for (const [k, v] of Object.entries(QT_MAP)) {
+          const raw = window['v_' + v];
+          if (typeof raw === 'string' && raw) lines.push('v_' + v + '="' + raw + '"');
+        }
+        for (const [k, v] of Object.entries(DYNAMIC_QT_MAP)) {
+          if (QT_MAP[k]) continue; // 已在静态表，避免重复
+          const raw = window['v_' + v];
+          if (typeof raw === 'string' && raw) lines.push('v_' + v + '="' + raw + '"');
+        }
+        resolve(parseTencentQuotes(lines));
+      } catch(e) { reject(e); } finally { s.remove(); }
+    };
+    s.onerror = () => { s.remove(); reject(new Error('script quotes failed')); };
+    document.head.appendChild(s);
+  });
+}
+
 async function loadPrices(force) {
   try {
-    const url = 'https://qt.gtimg.cn/q=' + getFullQtCodes();
-    const resp = await fetch(url);
-    const buf = await resp.arrayBuffer();
-    const text = new TextDecoder('gbk').decode(buf);
-    const results = {};
-    // 构建包含静态+动态映射的反向查找表
-    const fullReverse = {};
-    for (const [k,v] of Object.entries(QT_MAP)) fullReverse[v] = k;
-    for (const [k,v] of Object.entries(DYNAMIC_QT_MAP)) fullReverse[v] = k;
-    for (const line of text.split('\n')) {
-      const m = line.match(/^v_(\w+)="([^"]*)"/);
-      if (!m) continue;
-      const qtCode = m[1], raw = m[2];
-      const f = raw.split('~');
-      if (f.length < 40) continue;
-      const symbol = fullReverse[qtCode];
-      if (!symbol) continue;
-      const price = safeFloat(f[3]);
-      const prev = safeFloat(f[4]);
-      const pe = safeFloat(f[39]);
-      const mcap = safeFloat(f[45]) * 1e8; // f[45]是总市值(亿)，转成元
-      let currency = 'CNY';
-      if (qtCode.startsWith('hk')) currency = 'HKD';
-      else if (qtCode.startsWith('us')) currency = 'USD';
-      results[symbol] = {
-        name: f[1], price, prev_close: prev, pe, market_cap: mcap, currency,
-        change_pct: (price && prev && prev !== 0) ? +((price-prev)/prev*100).toFixed(2) : null
-      };
+    const codes = getFullQtCodes();
+    let results;
+    try {
+      results = await fetchTencentQuotes(codes);
+    } catch(e) {
+      // fetch 失败（file:// 等跨域受限）→ 降级为 script 注入
+      console.warn('fetch 行情失败，降级 script 注入:', e && e.message);
+      results = await scriptTencentQuotes(codes);
     }
     if (Object.keys(results).length > 0) {
       prices = results;
