@@ -1567,15 +1567,16 @@ function peColorClass(peVal, targetPe, isUS) {
 function priceDisplay(symbol, cost, value, shares) {
   const q = getPrice(symbol);
   if (!q || !q.price) return { price: '<span class="price-loading">加载中</span>', pe: '---', peVal: null, pnl: '---', pnlNum: 0 };
-  if (!cost) return { price: (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price), pe: q.pe ? NUM(q.pe, 1) : '---', peVal: q.pe || null, pnl: '---', pnlNum: 0 };
+  const peNeg = q.pe != null && q.pe < 0;
+  if (!cost) return { price: (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price), pe: peNeg ? '<span style="color:var(--red);font-weight:700">---</span>' : (q.pe ? NUM(q.pe, 1) : '---'), peVal: peNeg ? null : (q.pe || null), pnl: '---', pnlNum: 0 };
 
   const pnlPct = ((q.price - cost) / cost * 100);
   const cls = pnlPct >= 0 ? 'green' : 'red';
   const sign = pnlPct >= 0 ? '+' : '';
   return {
     price: (q.currency === 'HKD' ? 'HK$' : q.currency === 'USD' ? '$' : '¥') + NUM(q.price),
-    pe: q.pe ? NUM(q.pe, 1) : '---',
-    peVal: q.pe || null,
+    pe: peNeg ? '<span style="color:var(--red);font-weight:700">---</span>' : (q.pe ? NUM(q.pe, 1) : '---'),
+    peVal: peNeg ? null : (q.pe || null),
     pnl: `<span class="${cls}">${sign}${pnlPct.toFixed(2)}%</span>`,
     pnlNum: pnlPct
   };
