@@ -962,10 +962,10 @@ function safeFloat(s) { const n = parseFloat(s); return isNaN(n) ? null : n; }
 // ── 腾讯行情解析（共享） ──
 function parseTencentQuotes(lines) {
   const results = {};
-  // 构建包含静态+动态映射的反向查找表
+  // 构建包含静态+动态映射的反向查找表（QT_MAP 优先，防止 DYNAMIC_QT_MAP 污染覆盖）
   const fullReverse = {};
-  for (const [k,v] of Object.entries(QT_MAP)) fullReverse[v] = k;
   for (const [k,v] of Object.entries(DYNAMIC_QT_MAP)) fullReverse[v] = k;
+  for (const [k,v] of Object.entries(QT_MAP)) fullReverse[v] = k; // QT_MAP 后赋值，优先级最高
   for (const line of lines) {
     const m = line.match(/^v_(\w+)="([^"]*)"/);
     if (!m) continue;
@@ -1575,10 +1575,15 @@ let DYNAMIC_QT_MAP = {};
 
 function loadDynamicQtMap() {
   try { const s = localStorage.getItem('dynamic_qt_map'); if (s) DYNAMIC_QT_MAP = JSON.parse(s); } catch(e) {}
-  // 清理被污染条目：symbol 已在静态 QT_MAP 中且有冲突的 qtCode
+  // 清理被污染条目
   let dirty = false;
   for (const [sym, code] of Object.entries(DYNAMIC_QT_MAP)) {
-    if (QT_MAP[sym] && QT_MAP[sym] !== code) { delete DYNAMIC_QT_MAP[sym]; dirty = true; }
+    // 1. sym 已在静态 QT_MAP 中且 code 不一致 → 删除
+    if (QT_MAP[sym] && QT_MAP[sym] !== code) { delete DYNAMIC_QT_MAP[sym]; dirty = true; continue; }
+    // 2. code 和 QT_MAP 里某个 code 相同但 sym 不同 → 删除（防止 fullReverse 覆盖）
+    for (const [qtSym, qtCode] of Object.entries(QT_MAP)) {
+      if (qtCode === code && qtSym !== sym) { delete DYNAMIC_QT_MAP[sym]; dirty = true; break; }
+    }
   }
   if (dirty) saveDynamicQtMap();
 }
