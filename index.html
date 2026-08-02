@@ -484,12 +484,9 @@ tr:hover td { background: var(--surface-hover); }
   <div class="overlay-card">
     <div class="overlay-header">
       <h2>◇ 收益明细</h2>
-      <button class="overlay-close" onclick="closeReturnsDetail()">✕</button>
+      <span style="font-size:11px;color:var(--text-muted);">每日 17:00 更新</span>
     </div>
     <div class="overlay-body" id="returnsDetail"></div>
-    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
-      每日 17:00 自动记录快照 · 首次记录：<span id="firstSnapshotDate">---</span>
-    </div>
   </div>
 </div>
 
@@ -2044,10 +2041,8 @@ function showReturnsDetail() {
   const snapshots = getSnapshots();
   if (snapshots.length === 0) {
     document.getElementById('returnsDetail').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无历史快照，明天 17:00 后将自动记录。</div>';
-    document.getElementById('firstSnapshotDate').textContent = '---';
   } else {
     const currentTotal = getCurrentTotal();
-    document.getElementById('firstSnapshotDate').textContent = snapshots[0].date;
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
 
@@ -2111,14 +2106,14 @@ function showReturnsDetail() {
       const r = calcReturn(p.period);
       if (r.amount === null && r.pct === null) {
         html += `<div class="returns-row">
-          <div><span class="returns-label">${p.label}</span><br><span class="returns-period">基准日：${p.period} 起</span></div>
+          <span class="returns-label">${p.label}</span>
           <div class="returns-pct" style="color:var(--text-muted);">数据不足</div>
         </div>`;
       } else {
         const cls = r.amount >= 0 ? 'returns-positive' : 'returns-negative';
         const sign = r.amount >= 0 ? '+' : '';
         html += `<div class="returns-row">
-          <div><span class="returns-label">${p.label}</span><br><span class="returns-period">基准日：${p.period} · ${snapshots.length}条快照</span></div>
+          <span class="returns-label">${p.label}</span>
           <div style="text-align:right;">
             <div class="${cls} returns-value">${sign}¥${formatCN(r.amount)}</div>
             <div class="${cls} returns-pct">${sign}${r.pct.toFixed(2)}%</div>
