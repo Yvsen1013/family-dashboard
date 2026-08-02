@@ -1027,22 +1027,15 @@ function scriptTencentQuotes(codes) {
 async function loadPrices(force) {
   try {
     const codes = getFullQtCodes();
-    setDiag('股价加载中... codes=' + (codes ? codes.split(',').length : 0) + ' [' + (location.protocol === 'file:' ? 'script' : 'fetch') + ']');
+    setDiag('股价加载中... codes=' + (codes ? codes.split(',').length : 0));
     let results;
-    var mode = '';
-    if (location.protocol === 'file:') {
-      // file:// 直接打开：浏览器拦截跨域 fetch，直接用 script 标签注入（不受 CORS 限制）
-      mode = 'script';
+    try {
+      // 优先 fetch（file:// 和 https 下都适用，腾讯 API 返回 CORS *）
+      results = await fetchTencentQuotes(codes);
+    } catch(e) {
+      // fetch 失败时降级为 script 标签注入
+      console.warn('fetch 行情失败，降级 script 注入:', e && e.message);
       results = await scriptTencentQuotes(codes);
-    } else {
-      try {
-        mode = 'fetch';
-        results = await fetchTencentQuotes(codes);
-      } catch(e) {
-        console.warn('fetch 行情失败，降级 script 注入:', e && e.message);
-        mode = 'script(fallback)';
-        results = await scriptTencentQuotes(codes);
-      }
     }
     var n = Object.keys(results).length;
     if (n > 0) {
@@ -1056,7 +1049,7 @@ async function loadPrices(force) {
       renderQimingVC();
     } else {
       document.getElementById('priceStatus').innerHTML =
-        '<span style="color:var(--amber);">行情为空 [' + mode + '] codes=' + (codes ? codes.split(',').length : 0) + ' results=0</span>';
+        '<span style="color:var(--amber);">行情为空 codes=' + (codes ? codes.split(',').length : 0) + ' results=0</span>';
     }
   } catch(e) {
     document.getElementById('priceStatus').innerHTML =
