@@ -179,10 +179,10 @@ tr:hover td { background: var(--surface-hover); }
 .watch-card .stock-price { font-size: 20px; font-weight: 400; font-family: var(--num-font); letter-spacing: 1px; }
 .watch-card .stock-target { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .watch-card .stock-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-style: italic; }
-.watch-card.status-overvalued { border-left: 4px solid var(--red); }
-.watch-card.status-fair { border-left: 4px solid var(--green); }
-.watch-card.status-undervalued { border-left: 4px solid var(--amber); }
-.watch-card.status-watching { border-left: 4px solid var(--gray); }
+.watch-card.status-overvalued { background: rgba(207,75,60,0.12); }
+.watch-card.status-fair { background: rgba(46,139,70,0.12); }
+.watch-card.status-undervalued { background: rgba(217,161,59,0.15); }
+.watch-card.status-watching { background: rgba(160,141,123,0.12); }
 
 .pe-undervalued { color: var(--green); font-weight: 700; }
 .pe-fair { font-weight: 700; }
@@ -322,7 +322,6 @@ tr:hover td { background: var(--surface-hover); }
   .watch-card .stock-price { font-size: 18px; }
 
   .mobile-block { display: block; }
-  .watch-status-label { display: inline; margin-left: 6px; }
 
   .overlay-card { padding: 20px; width: 95%; max-width: none; box-shadow: 4px 4px 0 var(--border); }
   .framework-box { gap: 6px; padding: 12px 14px; }
@@ -1822,7 +1821,7 @@ function renderWatchlist(p) {
     return `<div class="watch-card ${statusCls}">
       <div class="stock-name">${w.name} ${w.note ? '<span style="font-size:11px;color:var(--text-muted);"> (' + w.note + ')</span>' : ''}</div>
       <div class="stock-symbol">${w.symbol || '---'} · ${w.market}</div>
-      <div class="stock-price">${priceStr} <span class="watch-status-label" style="font-size:11px;color:var(--text-secondary);">${statusLabel}</span></div>
+      <div class="stock-price">${priceStr}</div>
       ${w.target_price ? '<div class="stock-target">目标: ' + w.target_price + '</div>' : ''}
       ${w.target_pe ? '<div class="stock-target">PE目标区间: ' + w.target_pe + '</div>' : ''}
       ${w.target_mcap ? '<div class="stock-target">目标市值: ' + w.target_mcap + '</div>' : ''}
