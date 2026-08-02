@@ -965,6 +965,70 @@ function loadPortfolio() {
 function savePortfolio() {
   localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
   localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+  savePortfolioToCloud();
+}
+
+// ───────── 云端同步（Supabase） ─────────
+// 使用方法：注册 Supabase 免费账号后，将下面两个常量填入即可开启跨设备同步
+const CLOUD_DB_URL = ''; // 例: 'https://xxxxx.supabase.co/rest/v1/portfolio_data'
+const CLOUD_DB_KEY = ''; // Supabase anon key（公开密钥，安全可放入前端）
+let cloudUpdatedAt = null;
+let isCloudSyncing = false;
+
+async function loadPortfolioFromCloud() {
+  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return null;
+  try {
+    const resp = await fetch(CLOUD_DB_URL + '?id=eq.main&select=data,updated_at', {
+      headers: { 'apikey': CLOUD_DB_KEY, 'Authorization': 'Bearer ' + CLOUD_DB_KEY }
+    });
+    if (!resp.ok) return null;
+    const rows = await resp.json();
+    if (rows && rows.length > 0) return { data: rows[0].data, updated_at: rows[0].updated_at };
+  } catch(e) { console.warn('云端加载失败:', e); }
+  return null;
+}
+
+async function savePortfolioToCloud() {
+  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return;
+  try {
+    await fetch(CLOUD_DB_URL + '?id=eq.main', {
+      method: 'PATCH',
+      headers: {
+        'apikey': CLOUD_DB_KEY,
+        'Authorization': 'Bearer ' + CLOUD_DB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ data: portfolio, updated_at: new Date().toISOString() })
+    });
+    cloudUpdatedAt = new Date().toISOString();
+  } catch(e) { console.warn('云端保存失败:', e); }
+}
+
+async function syncFromCloud() {
+  if (isCloudSyncing) return;
+  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return;
+  isCloudSyncing = true;
+  try {
+    const cloud = await loadPortfolioFromCloud();
+    if (cloud && cloud.data) {
+      if (cloud.updated_at !== cloudUpdatedAt) {
+        portfolio = cloud.data;
+        cloudUpdatedAt = cloud.updated_at;
+        localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
+        localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+        renderMetrics(portfolio);
+        renderPositions(portfolio);
+        renderFCN(portfolio);
+        renderWatchlist(portfolio);
+        renderQimingVC();
+      }
+    } else {
+      // 云端无数据，首次同步，上传当前持仓
+      await savePortfolioToCloud();
+    }
+  } catch(e) { console.warn('同步失败:', e); }
+  isCloudSyncing = false;
 }
 
 // ───────── 持仓变更管理 ─────────
@@ -2061,6 +2125,9 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
 // 启动：先获取汇率，再加载持仓数据和股价
 fetchFX().then(() => {
   loadPortfolio();
+  // 云端同步：首次拉取 + 每30秒轮询
+  syncFromCloud();
+  setInterval(syncFromCloud, 30000);
   loadRemoteSnapshots().then(() => {
     loadPrices().then(() => {
       recordSnapshot();
