@@ -1027,7 +1027,6 @@ function scriptTencentQuotes(codes) {
 async function loadPrices(force) {
   try {
     const codes = getFullQtCodes();
-    setDiag('股价加载中... codes=' + (codes ? codes.split(',').length : 0));
     let results;
     try {
       // 优先 fetch（file:// 和 https 下都适用，腾讯 API 返回 CORS *）
@@ -1040,11 +1039,8 @@ async function loadPrices(force) {
     var n = Object.keys(results).length;
     if (n > 0) {
       prices = results;
-      var keys = Object.keys(results);
-      var has0700 = keys.indexOf('0700.HK') >= 0;
       document.getElementById('priceStatus').innerHTML =
-        '<span class="live-dot"></span>实时股价 ' + new Date().toLocaleTimeString('zh-CN') +
-        ' [' + n + '只 ' + (has0700 ? '✓腾讯' : '✗缺腾讯') + ']';
+        '<span class="live-dot"></span>实时股价 ' + new Date().toLocaleTimeString('zh-CN');
       renderMetrics(portfolio);
       renderPositions(portfolio);
       renderFCN(portfolio);
@@ -1052,7 +1048,7 @@ async function loadPrices(force) {
       renderQimingVC();
     } else {
       document.getElementById('priceStatus').innerHTML =
-        '<span style="color:var(--amber);">行情为空 codes=' + (codes ? codes.split(',').length : 0) + ' results=0</span>';
+        '<span style="color:var(--amber);">股价更新失败，60秒后重试</span>';
     }
   } catch(e) {
     document.getElementById('priceStatus').innerHTML =
@@ -2462,11 +2458,8 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
 });
 
 // 启动：先获取汇率，再加载持仓数据和股价
-setDiag('正在获取汇率...');
 fetchFX().then(() => {
-  setDiag('汇率OK，加载持仓数据...');
   loadPortfolio();
-  setDiag('持仓OK [' + (portfolio.attack && portfolio.attack.assets ? portfolio.attack.assets.length : 0) + '组]，加载股价...');
   // 立即拉取股价——不等待云端同步，避免海外 jsonblob 响应慢导致股价迟迟不显示
   loadPrices();
   // 云端同步：首次拉取 + 每30秒轮询
@@ -2480,7 +2473,7 @@ fetchFX().then(() => {
   // 拉取历史收益快照（不阻塞股价加载）
   loadRemoteSnapshots();
 }).catch(e => {
-  setDiag('启动失败: ' + ((e && e.message) || e));
+  console.warn('启动失败:', e);
 });
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
