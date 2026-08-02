@@ -950,6 +950,7 @@ function loadPortfolio() {
   loadDynamicQtMap();
   const saved = localStorage.getItem('family_portfolio');
   const savedVer = localStorage.getItem('family_portfolio_ver');
+  localLastModified = localStorage.getItem('portfolio_local_modified') || null;
   // 版本不匹配 → 废弃旧缓存，使用最新内嵌数据
   if (saved && savedVer && String(savedVer) === String(PORTFOLIO_DATA_VERSION)) {
     try { portfolio = JSON.parse(saved); } catch(e) { portfolio = EMBEDDED_PORTFOLIO; }
@@ -965,66 +966,79 @@ function loadPortfolio() {
 function savePortfolio() {
   localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
   localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+  localLastModified = new Date().toISOString();
+  localStorage.setItem('portfolio_local_modified', localLastModified);
   savePortfolioToCloud();
 }
 
-// ───────── 云端同步（Supabase） ─────────
-// 使用方法：注册 Supabase 免费账号后，将下面两个常量填入即可开启跨设备同步
-const CLOUD_DB_URL = ''; // 例: 'https://xxxxx.supabase.co/rest/v1/portfolio_data'
-const CLOUD_DB_KEY = ''; // Supabase anon key（公开密钥，安全可放入前端）
-let cloudUpdatedAt = null;
+// ───────── 云端同步（JSONBlob，零配置） ─────────
+// 无需注册、无需API Key，自动跨设备同步
+// 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
+const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc026-e255-737c-b4b9-82d5236098b0';
+let cloudLastModified = null;
+let localLastModified = null;
 let isCloudSyncing = false;
+let lastCloudSaveTime = 0;
 
 async function loadPortfolioFromCloud() {
-  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return null;
   try {
-    const resp = await fetch(CLOUD_DB_URL + '?id=eq.main&select=data,updated_at', {
-      headers: { 'apikey': CLOUD_DB_KEY, 'Authorization': 'Bearer ' + CLOUD_DB_KEY }
-    });
+    const resp = await fetch(CLOUD_BLOB_URL + '?t=' + Date.now());
     if (!resp.ok) return null;
-    const rows = await resp.json();
-    if (rows && rows.length > 0) return { data: rows[0].data, updated_at: rows[0].updated_at };
+    const blob = await resp.json();
+    if (blob && blob.data) return { data: blob.data, updated_at: blob.lastModified };
   } catch(e) { console.warn('云端加载失败:', e); }
   return null;
 }
 
 async function savePortfolioToCloud() {
-  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return;
+  if (!localLastModified) return;
   try {
-    await fetch(CLOUD_DB_URL + '?id=eq.main', {
-      method: 'PATCH',
-      headers: {
-        'apikey': CLOUD_DB_KEY,
-        'Authorization': 'Bearer ' + CLOUD_DB_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ data: portfolio, updated_at: new Date().toISOString() })
+    const payload = { lastModified: localLastModified, data: portfolio };
+    const resp = await fetch(CLOUD_BLOB_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    cloudUpdatedAt = new Date().toISOString();
+    if (resp.ok) {
+      cloudLastModified = localLastModified;
+      lastCloudSaveTime = Date.now();
+    }
   } catch(e) { console.warn('云端保存失败:', e); }
 }
 
 async function syncFromCloud() {
   if (isCloudSyncing) return;
-  if (!CLOUD_DB_URL || !CLOUD_DB_KEY) return;
   isCloudSyncing = true;
   try {
     const cloud = await loadPortfolioFromCloud();
-    if (cloud && cloud.data) {
-      if (cloud.updated_at !== cloudUpdatedAt) {
+    if (cloud && cloud.data && cloud.data.attack) {
+      cloudLastModified = cloud.updated_at;
+      var cloudTime = new Date(cloud.updated_at).getTime();
+      var localTime = localLastModified ? new Date(localLastModified).getTime() : 0;
+
+      if (cloudTime > localTime) {
+        // 云端比本地新 → 更新本地
         portfolio = cloud.data;
-        cloudUpdatedAt = cloud.updated_at;
+        localLastModified = cloud.updated_at;
         localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
         localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+        localStorage.setItem('portfolio_local_modified', localLastModified);
         renderMetrics(portfolio);
         renderPositions(portfolio);
         renderFCN(portfolio);
         renderWatchlist(portfolio);
         renderQimingVC();
+      } else if (localTime > cloudTime) {
+        // 本地比云端新 → 上传本地
+        await savePortfolioToCloud();
+      }
+
+      // Keep-alive: 2小时无条件PUT一次，防止blob过期
+      if (Date.now() - lastCloudSaveTime > 2 * 60 * 60 * 1000) {
+        await savePortfolioToCloud();
       }
     } else {
-      // 云端无数据，首次同步，上传当前持仓
+      // 云端无数据（首次使用或blob过期），上传当前持仓
       await savePortfolioToCloud();
     }
   } catch(e) { console.warn('同步失败:', e); }
