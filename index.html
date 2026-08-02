@@ -2351,10 +2351,10 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
 });
 
 // 启动：先获取汇率，再加载持仓数据和股价
-fetchFX().then(() => {
+fetchFX().then(async () => {
   loadPortfolio();
-  // 云端同步：首次拉取 + 每30秒轮询
-  syncFromCloud();
+  // 云端同步：首次拉取，必须等完成后再拉股价，确保新增标的已注册
+  await syncFromCloud();
   setInterval(syncFromCloud, 30000);
   loadRemoteSnapshots().then(() => {
     loadPrices().then(() => {
