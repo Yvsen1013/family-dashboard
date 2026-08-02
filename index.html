@@ -483,10 +483,11 @@ tr:hover td { background: var(--surface-hover); }
 <div id="returnsOverlay" class="overlay" style="display:none;">
   <div class="overlay-card">
     <div class="overlay-header">
-      <h2>◇ 收益明细</h2>
+      <h2>收益明细</h2>
       <span style="font-size:11px;color:var(--text-muted);">每日 17:00 更新</span>
     </div>
     <div class="overlay-body" id="returnsDetail"></div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);text-align:right;" id="returnsFooter"></div>
   </div>
 </div>
 
@@ -2041,7 +2042,9 @@ function showReturnsDetail() {
   const snapshots = getSnapshots();
   if (snapshots.length === 0) {
     document.getElementById('returnsDetail').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无历史快照，明天 17:00 后将自动记录。</div>';
+    document.getElementById('returnsFooter').textContent = '';
   } else {
+    document.getElementById('returnsFooter').textContent = '首次记账：' + snapshots[0].date;
     const currentTotal = getCurrentTotal();
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
