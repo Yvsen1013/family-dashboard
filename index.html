@@ -597,6 +597,22 @@ tr:hover td { background: var(--surface-hover); }
 </div>
 
 <script>
+// ── 全局错误捕获（诊断 file:// 下 JS 是否中断） ──
+window.addEventListener('error', function(e) {
+  var d = document.getElementById('priceStatus');
+  if (d) d.innerHTML = '<span style="color:#cf4b3c;font-weight:700;">JS错误: ' + (e.message || '未知') + (e.lineno ? ' @行' + e.lineno : '') + '</span>';
+  console.error('[全局错误]', e);
+});
+window.addEventListener('unhandledrejection', function(e) {
+  var d = document.getElementById('priceStatus');
+  if (d) d.innerHTML = '<span style="color:#cf4b3c;font-weight:700;">异步错误: ' + (e.reason && e.reason.message || e.reason || '未知') + '</span>';
+  console.error('[异步错误]', e);
+});
+function setDiag(msg) {
+  var d = document.getElementById('priceStatus');
+  if (d) d.innerHTML = '<span style="color:var(--text-muted);">' + msg + '</span>';
+}
+
 const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
 const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
 const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, true) : formatCNDec(n));
@@ -1011,6 +1027,7 @@ function scriptTencentQuotes(codes) {
 async function loadPrices(force) {
   try {
     const codes = getFullQtCodes();
+    setDiag('股价加载中... codes=' + (codes ? codes.split(',').length : 0) + ' [' + (location.protocol === 'file:' ? 'script' : 'fetch') + ']');
     let results;
     var mode = '';
     if (location.protocol === 'file:') {
@@ -1027,7 +1044,8 @@ async function loadPrices(force) {
         results = await scriptTencentQuotes(codes);
       }
     }
-    if (Object.keys(results).length > 0) {
+    var n = Object.keys(results).length;
+    if (n > 0) {
       prices = results;
       document.getElementById('priceStatus').innerHTML =
         '<span class="live-dot"></span>实时股价 ' + new Date().toLocaleTimeString('zh-CN');
@@ -1038,7 +1056,7 @@ async function loadPrices(force) {
       renderQimingVC();
     } else {
       document.getElementById('priceStatus').innerHTML =
-        '<span style="color:var(--amber);">行情数据为空 [' + mode + ']</span>';
+        '<span style="color:var(--amber);">行情为空 [' + mode + '] codes=' + (codes ? codes.split(',').length : 0) + ' results=0</span>';
     }
   } catch(e) {
     document.getElementById('priceStatus').innerHTML =
@@ -2443,8 +2461,11 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
 });
 
 // 启动：先获取汇率，再加载持仓数据和股价
+setDiag('正在获取汇率...');
 fetchFX().then(() => {
+  setDiag('汇率OK，加载持仓数据...');
   loadPortfolio();
+  setDiag('持仓OK [' + (portfolio.attack && portfolio.attack.assets ? portfolio.attack.assets.length : 0) + '组]，加载股价...');
   // 立即拉取股价——不等待云端同步，避免海外 jsonblob 响应慢导致股价迟迟不显示
   loadPrices();
   // 云端同步：首次拉取 + 每30秒轮询
@@ -2457,6 +2478,8 @@ fetchFX().then(() => {
   });
   // 拉取历史收益快照（不阻塞股价加载）
   loadRemoteSnapshots();
+}).catch(e => {
+  setDiag('启动失败: ' + ((e && e.message) || e));
 });
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
