@@ -317,8 +317,8 @@ tr:hover td { background: var(--surface-hover); }
   .pos-card-item { padding: 0; }
 
   .watch-legend { justify-content: flex-start; gap: 10px; flex-wrap: nowrap; }
-  .watch-row { gap: 8px; }
-  .watch-card { min-width: 0; flex: 1 1 100%; box-shadow: 2px 2px 0 var(--border); }
+  .watch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .watch-card { min-width: 0; box-shadow: 2px 2px 0 var(--border); }
   .watch-card .stock-price { font-size: 18px; }
 
   .mobile-block { display: block; }
