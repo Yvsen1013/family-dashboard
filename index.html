@@ -1619,7 +1619,7 @@ function renderMetrics(p) {
   if (nearestExpiryMonth !== null) {
     document.getElementById('fcnLabel').textContent = 'FCN · ' + (nearestExpiryMonth + 1) + '月票息';
   }
-  document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block"> (' + nearestDays + '天后到期)</span>' : '';
+  document.getElementById('fcnRatio').innerHTML = nearestDays !== null ? nearestUnderlying + '<span class="mobile-block"> (' + nearestDays + '天)</span>' : '';
   const defenseDynamic = computeDefenseDynamic();
   document.getElementById('defenseAssets').textContent = CNY(defenseDynamic, true);
   document.getElementById('defenseRatio').textContent = '占总资产 ' + (defenseDynamic / totalAssets * 100).toFixed(1) + '%';
@@ -1872,7 +1872,7 @@ function renderFCN(p) {
     html += `<div class="fcn-card">
       <div class="fcn-header">
         <span class="fcn-title">FCN ${c.id} · ${c.underlying}</span>
-        <span class="fcn-days ${daysCls}">${daysLeft}天后到期</span>
+        <span class="fcn-days ${daysCls}">${daysLeft}天</span>
       </div>
       <div class="fcn-grid">
         <div class="fcn-item"><span class="fcn-label">面额</span><span class="fcn-val">${CNY(c.value)}</span></div>
