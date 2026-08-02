@@ -991,8 +991,8 @@ async function loadPortfolioFromCloud() {
 }
 
 async function savePortfolioToCloud() {
-  if (!localLastModified) return;
   try {
+    if (!localLastModified) localLastModified = new Date().toISOString();
     const payload = { lastModified: localLastModified, data: portfolio };
     const resp = await fetch(CLOUD_BLOB_URL, {
       method: 'PUT',
