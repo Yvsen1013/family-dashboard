@@ -602,11 +602,11 @@ function setDiag(msg) {
 const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
 const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
 const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, true) : formatCNDec(n));
-// 带小数点对齐的金额显示——等宽字体固定容器右对齐（仅防守资产明细使用）
+// 带小数点对齐的金额显示——等宽字体固定宽度容器右对齐（仅防守资产明细使用）
 const CNYalign = (n) => {
   if (n == null) return '---';
   const s = formatCNDec(n);
-  return '<span style="display:inline-block;text-align:right;min-width:15ch;font-family:var(--num-font);font-variant-numeric:tabular-nums;">¥' + s + '</span>';
+  return '<span style="display:inline-block;width:15ch;text-align:right;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">¥' + s + '</span>';
 };
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
