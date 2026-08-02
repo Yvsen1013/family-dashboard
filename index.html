@@ -470,11 +470,12 @@ tr:hover td { background: var(--surface-hover); }
 </div>
 
 <!-- 防守资产详情弹窗 -->
-<div id="defenseOverlay" class="overlay" style="display:none;">
+<div id="defenseOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeDefenseDetail()">
   <div class="overlay-card">
     <div class="overlay-header">
       <h2>防守资产明细</h2>
-      <button class="overlay-close" onclick="closeDefenseDetail()">✕</button>
+      <button id="defenseEditBtn" class="overlay-close" style="font-size:13px;padding:4px 10px;width:auto;" onclick="toggleDefenseEditMode(true)">更新</button>
+      <button id="defenseConfirmBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--green);color:white;" onclick="confirmDefenseUpdate()">确认</button>
     </div>
     <div class="overlay-body" id="defenseDetail"></div>
   </div>
@@ -940,6 +941,7 @@ const EMBEDDED_PORTFOLIO = {
 let portfolio = EMBEDDED_PORTFOLIO;
 let prices = {};
 let refreshTimer = null;
+let defenseEditMode = false;
 
 // 腾讯行情 API 符号映射 (支持 CORS，浏览器直连)
 const QT_MAP = {
@@ -1799,7 +1801,9 @@ function showDefenseDetail() {
   const typeNames = { '固收': '固收+产品', '黄金': '黄金', '现金': '现金' };
   const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
-  html += '<div style="display:grid;grid-template-columns:1fr auto auto auto;column-gap:16px;align-items:baseline;">';
+  // 编辑模式四列（名称/编辑/金额/占比），浏览模式三列（名称/金额/占比）
+  const gridCols = defenseEditMode ? '1fr auto auto auto' : '1fr auto auto';
+  html += `<div style="display:grid;grid-template-columns:${gridCols};column-gap:16px;align-items:baseline;">`;
   for (const [type, items] of Object.entries(groups)) {
     html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
@@ -1808,26 +1812,25 @@ function showDefenseDetail() {
       const priceNote = isGold ? '<br><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">（前日银行金条价格：¥' + goldPerGram + '/g）</span>' : '';
       const ratio = totalAssets ? (itemValue / totalAssets * 100).toFixed(2) : '0.00';
 
-      // 编辑列：黄金改克数，其他改金额
-      let editHtml = '';
-      if (isGold) {
-        editHtml = `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
-          <input type="number" value="${a.grams || 300}" min="0" step="1"
-            onchange="updateDefenseAsset(${a.idx}, 'grams', this.value)"
-            style="width:56px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
-          g
-        </span>`;
-      } else {
-        editHtml = `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
-          ¥
-          <input type="number" value="${a.value || 0}" min="0" step="1"
-            onchange="updateDefenseAsset(${a.idx}, 'value', this.value)"
-            style="width:80px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
-        </span>`;
+      html += `<span style="font-weight:500;padding:3px 0;">${a.name}${priceNote}</span>`;
+
+      // 编辑模式才显示输入框
+      if (defenseEditMode) {
+        if (isGold) {
+          html += `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
+            <input type="number" class="defense-edit-input" data-idx="${a.idx}" data-field="grams" value="${a.grams || 300}" min="0" step="1"
+              style="width:56px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+            g
+          </span>`;
+        } else {
+          html += `<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;display:flex;align-items:center;gap:4px;">
+            ¥
+            <input type="number" class="defense-edit-input" data-idx="${a.idx}" data-field="value" value="${a.value || 0}" min="0" step="1"
+              style="width:80px;text-align:right;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+          </span>`;
+        }
       }
 
-      html += `<span style="font-weight:500;padding:3px 0;">${a.name}${priceNote}</span>`;
-      html += editHtml;
       html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue)}</span>`;
       html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${ratio}%</span>`;
     }
@@ -1835,14 +1838,62 @@ function showDefenseDetail() {
   html += '</div>';
 
   document.getElementById('defenseDetail').innerHTML = html;
+  updateDefenseHeaderButtons();
   document.getElementById('defenseOverlay').style.display = 'flex';
 }
 
 function closeDefenseDetail() {
+  defenseEditMode = false;
+  updateDefenseHeaderButtons();
   document.getElementById('defenseOverlay').style.display = 'none';
 }
 
-// 更新防守资产金额或黄金克数，并重新计算占比
+function updateDefenseHeaderButtons() {
+  const editBtn = document.getElementById('defenseEditBtn');
+  const confirmBtn = document.getElementById('defenseConfirmBtn');
+  if (editBtn) editBtn.style.display = defenseEditMode ? 'none' : 'inline-flex';
+  if (confirmBtn) confirmBtn.style.display = defenseEditMode ? 'inline-flex' : 'none';
+}
+
+function toggleDefenseEditMode(mode) {
+  defenseEditMode = mode;
+  updateDefenseHeaderButtons();
+  showDefenseDetail();
+}
+
+// 确认更新：读取所有编辑框的值，批量更新后保存
+function confirmDefenseUpdate() {
+  if (!portfolio || !portfolio.defense) return;
+  const inputs = document.querySelectorAll('.defense-edit-input');
+  inputs.forEach(input => {
+    const idx = parseInt(input.dataset.idx, 10);
+    const field = input.dataset.field;
+    const value = parseFloat(input.value);
+    if (Number.isNaN(value) || value < 0 || !portfolio.defense.assets[idx]) return;
+    const asset = portfolio.defense.assets[idx];
+    if (field === 'value') {
+      asset.value = Math.round(value);
+    } else if (field === 'grams') {
+      asset.grams = Math.round(value);
+      asset.value = getGoldValue(asset);
+    }
+  });
+
+  // 重新计算防守总资产与各资产占比
+  portfolio.defense.total = computeDefenseDynamic();
+  const totalAssets = computeTotalAssets();
+  for (const a of portfolio.defense.assets) {
+    const v = a.name.includes('黄金') ? getGoldValue(a) : (a.value || 0);
+    a.ratio = parseFloat((v / totalAssets * 100).toFixed(2));
+  }
+
+  savePortfolio();
+  renderMetrics(portfolio);
+  renderPositions(portfolio);
+  toggleDefenseEditMode(false);
+}
+
+// 兼容旧逻辑：逐个更新（当前仅保留供确认按钮批量调用）
 function updateDefenseAsset(idx, field, value) {
   if (!portfolio || !portfolio.defense || !portfolio.defense.assets[idx]) return;
   const num = parseFloat(value);
@@ -1853,14 +1904,10 @@ function updateDefenseAsset(idx, field, value) {
     asset.value = Math.round(num);
   } else if (field === 'grams') {
     asset.grams = Math.round(num);
-    // 同步更新静态 value，便于其他地方读取
     asset.value = getGoldValue(asset);
   }
 
-  // 重新计算防守总资产
   portfolio.defense.total = computeDefenseDynamic();
-
-  // 重新计算各防守资产占总资产比例
   const totalAssets = computeTotalAssets();
   for (const a of portfolio.defense.assets) {
     const v = a.name.includes('黄金') ? getGoldValue(a) : (a.value || 0);
