@@ -2150,6 +2150,10 @@ function confirmAddWatch() {
   }
 
   savePortfolio();
+  // 注册 Qt Code 到动态映射，确保下次刷新股价时包含该标的
+  var qtCode = buildQtCode(symbol, market);
+  if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
+  loadPrices(true); // 立即拉取新标的行情
   renderWatchlist(portfolio);
 
   // 按钮切换为撤销
