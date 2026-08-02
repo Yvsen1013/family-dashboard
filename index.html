@@ -256,6 +256,7 @@ tr:hover td { background: var(--surface-hover); }
 }
 .overlay-close:hover { background: var(--surface-hover); }
 .overlay-close:active { transform: translate(2px, 2px); box-shadow: none; }
+.search-result-item:hover { background: rgba(217,119,87,0.1); }
 .pos-mgr-table-wrap { overflow-x: auto; margin-bottom: 8px; }
 .pos-mgr-table { width: 100%; border-collapse: collapse; }
 .pos-mgr-table th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--text-secondary); border-bottom: 2px solid var(--border); }
@@ -446,7 +447,7 @@ tr:hover td { background: var(--surface-hover); }
 <div class="section">
   <div class="section-header">
     <h2 class="watchlist-title">狩猎清单</h2>
-    <span style="font-size:12px;color:var(--text-muted);">研判估值，预留安全边际</span>
+    <button class="position-btn" onclick="openAddWatch()" style="background:var(--green);">新增目标</button>
   </div>
   <div class="watch-legend" style="font-size:11px;color:var(--text-muted);margin-bottom:16px;line-height:1.8;">
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--yellow);margin-right:5px;vertical-align:middle;"></span>低估</span>
@@ -532,6 +533,34 @@ tr:hover td { background: var(--surface-hover); }
       <div id="fcnPreview" style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;"></div>
       <div style="margin-top:16px;text-align:right;">
         <button id="fcnConfirmBtn" onclick="confirmAddFcn()" style="padding:8px 20px;background:var(--green);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认新增</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新增狩猎目标弹窗 -->
+<div id="addWatchOverlay" class="overlay" style="display:none;">
+  <div class="overlay-card" style="max-width:520px;">
+    <div class="overlay-header">
+      <h2>新增目标</h2>
+      <button class="overlay-close" onclick="closeAddWatch()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div style="position:relative;margin-bottom:16px;">
+        <label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px;">搜索标的（A股/港股/美股）</label>
+        <input id="addWatchSearch" type="text" placeholder="输入名称或代码..." autocomplete="off" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font);">
+        <div id="addWatchResults" style="position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:2px solid var(--border);border-top:none;border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+      </div>
+      <input type="hidden" id="addWatchName"><input type="hidden" id="addWatchSymbol"><input type="hidden" id="addWatchMarket">
+      <div style="display:flex;gap:12px;margin-bottom:16px;">
+        <div style="flex:1;"><label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px;">PE目标下限</label>
+          <input id="addWatchPeLow" type="number" step="0.1" placeholder="如 20" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+        <div style="flex:1;"><label style="font-size:11px;color:var(--text-secondary);display:block;margin-bottom:4px;">PE目标上限</label>
+          <input id="addWatchPeHigh" type="number" step="0.1" placeholder="如 60" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--num-font);"></div>
+      </div>
+      <div id="addWatchPreview" style="padding:10px;background:rgba(255,255,255,0.3);border-radius:6px;border:1px solid var(--border);display:none;font-size:13px;margin-bottom:16px;"></div>
+      <div style="text-align:right;">
+        <button id="addWatchConfirmBtn" onclick="confirmAddWatch()" style="padding:8px 20px;background:var(--green);color:#fff;border:2px solid var(--border);border-radius:6px;cursor:pointer;font-family:var(--font);box-shadow:2px 2px 0 var(--border);">确认新增</button>
       </div>
     </div>
   </div>
@@ -1983,6 +2012,164 @@ function doDeleteWatch() {
   renderWatchlist(portfolio);
   closeDeleteWatch();
 }
+
+// ───────── 狩猎清单新增 ─────────
+let addWatchSearchTimer = null;
+
+function openAddWatch() {
+  document.getElementById('addWatchOverlay').style.display = 'flex';
+  document.getElementById('addWatchSearch').value = '';
+  document.getElementById('addWatchName').value = '';
+  document.getElementById('addWatchSymbol').value = '';
+  document.getElementById('addWatchMarket').value = '';
+  document.getElementById('addWatchPeLow').value = '';
+  document.getElementById('addWatchPeHigh').value = '';
+  document.getElementById('addWatchResults').style.display = 'none';
+  document.getElementById('addWatchPreview').style.display = 'none';
+  document.getElementById('addWatchConfirmBtn').textContent = '确认新增';
+  document.getElementById('addWatchConfirmBtn').style.background = 'var(--green)';
+  addWatchPendingId = null;
+  setTimeout(function() { document.getElementById('addWatchSearch').focus(); }, 200);
+
+  // 绑定搜索事件
+  var si = document.getElementById('addWatchSearch');
+  si.oninput = function() {
+    clearTimeout(addWatchSearchTimer);
+    var kw = this.value.trim();
+    if (kw.length < 1) { document.getElementById('addWatchResults').style.display = 'none'; return; }
+    addWatchSearchTimer = setTimeout(function() { doAddWatchSearch(kw); }, 300);
+  };
+  si.onfocus = function() {
+    if (this.value.trim().length >= 1) doAddWatchSearch(this.value.trim());
+  };
+}
+
+function closeAddWatch() {
+  document.getElementById('addWatchOverlay').style.display = 'none';
+}
+
+async function doAddWatchSearch(keyword) {
+  var results = await searchStocks(keyword);
+  var container = document.getElementById('addWatchResults');
+  if (!results || results.length === 0) {
+    container.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:12px;">未找到匹配标的</div>';
+    container.style.display = 'block';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    var mktLabel = r.market === 'HK' ? '港股' : r.market === 'US' ? '美股' : 'A股';
+    html += '<div class="search-result-item" onclick="selectAddWatchStock(\'' + r.name.replace(/'/g, '\\\'') + '\',\'' + r.symbol + '\',\'' + r.market + '\')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(67,48,43,0.1);font-size:13px;transition:background 0.15s;">'
+      + '<span style="font-weight:700;">' + r.name + '</span> '
+      + '<span style="color:var(--text-muted);font-size:11px;">' + r.symbol + '</span> '
+      + '<span style="float:right;color:var(--text-secondary);font-size:11px;">' + mktLabel + '</span>'
+      + '</div>';
+  }
+  container.innerHTML = html;
+  container.style.display = 'block';
+}
+
+function selectAddWatchStock(name, symbol, market) {
+  document.getElementById('addWatchSearch').value = name + ' (' + symbol + ')';
+  document.getElementById('addWatchName').value = name;
+  document.getElementById('addWatchSymbol').value = symbol;
+  document.getElementById('addWatchMarket').value = market;
+  document.getElementById('addWatchResults').style.display = 'none';
+
+  var mktLabel = market === 'HK' ? '港股' : market === 'US' ? '美股' : 'A股';
+  document.getElementById('addWatchPreview').innerHTML = '已选标的：<b>' + name + '</b>（' + symbol + '）· ' + mktLabel + '<br>请填写PE目标区间后确认新增';
+  document.getElementById('addWatchPreview').style.display = 'block';
+}
+
+let addWatchPendingId = null;
+
+function confirmAddWatch() {
+  var btn = document.getElementById('addWatchConfirmBtn');
+  // 如果是撤销操作
+  if (addWatchPendingId) {
+    var pw = addWatchPendingId;
+    var addedItem = null;
+    for (var ag = 0; ag < portfolio.attack.assets.length; ag++) {
+      var assetGroup = portfolio.attack.assets[ag];
+      if (assetGroup.watchlist) {
+        for (var wi = assetGroup.watchlist.length - 1; wi >= 0; wi--) {
+          if (assetGroup.watchlist[wi]._addId === pw) {
+            addedItem = assetGroup.watchlist[wi];
+            assetGroup.watchlist.splice(wi, 1);
+            break;
+          }
+        }
+      }
+      if (addedItem) break;
+    }
+    savePortfolio();
+    renderWatchlist(portfolio);
+    btn.textContent = '确认新增';
+    btn.style.background = 'var(--green)';
+    addWatchPendingId = null;
+    return;
+  }
+
+  var name = document.getElementById('addWatchName').value.trim();
+  var symbol = document.getElementById('addWatchSymbol').value.trim();
+  var market = document.getElementById('addWatchMarket').value.trim();
+  var peLow = document.getElementById('addWatchPeLow').value.trim();
+  var peHigh = document.getElementById('addWatchPeHigh').value.trim();
+
+  if (!name || !symbol || !market) {
+    alert('请先搜索并选择标的');
+    return;
+  }
+  if (!peLow || !peHigh) {
+    alert('请填写PE目标区间（下限和上限）');
+    return;
+  }
+
+  var targetPe = peLow + '-' + peHigh;
+  var id = 'w' + Date.now();
+
+  var newItem = {
+    name: name,
+    symbol: symbol,
+    market: market,
+    target_pe: targetPe,
+    target_price: null,
+    note: '',
+    _addId: id
+  };
+
+  // 根据市场添加到对应资产组
+  var targetCategory = market === 'HK' ? '港股' : market === 'US' ? '美股' : 'A股';
+  for (var ag2 = 0; ag2 < portfolio.attack.assets.length; ag2++) {
+    if (portfolio.attack.assets[ag2].category === targetCategory) {
+      if (!portfolio.attack.assets[ag2].watchlist) portfolio.attack.assets[ag2].watchlist = [];
+      portfolio.attack.assets[ag2].watchlist.push(newItem);
+      break;
+    }
+  }
+
+  savePortfolio();
+  renderWatchlist(portfolio);
+
+  // 按钮切换为撤销
+  btn.textContent = '撤销';
+  btn.style.background = 'var(--red)';
+  addWatchPendingId = id;
+
+  document.getElementById('addWatchPreview').innerHTML = '已添加：<b>' + name + '</b> · PE ' + targetPe + '<br>点击「撤销」可移除';
+}
+
+// 点击弹窗外部关闭
+document.getElementById('addWatchOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeAddWatch();
+});
+
+// 点击搜索框外部关闭下拉
+document.addEventListener('click', function(e) {
+  var r = document.getElementById('addWatchResults');
+  if (r && e.target.id !== 'addWatchSearch' && !r.contains(e.target)) r.style.display = 'none';
+});
 
 // 快照管理
 const SNAPSHOT_KEY = 'family_dashboard_snapshots';
