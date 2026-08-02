@@ -1552,8 +1552,11 @@ function priceArrow(symbol) {
   return '';
 }
 
-function peColorClass(peVal, targetPe) {
-  if (peVal == null || !targetPe) return '';
+function peColorClass(peVal, targetPe, isUS) {
+  if (peVal == null) return '';
+  // 美股：PE > 100 无论是否有合理区间，直接标红
+  if (isUS && peVal > 100) return 'pe-overvalued';
+  if (!targetPe) return '';
   const [lo, hi] = targetPe.split('-').map(Number);
   if (isNaN(lo) || isNaN(hi)) return '';
   if (peVal < lo) return 'pe-undervalued';
@@ -1794,7 +1797,7 @@ function renderPositions(p) {
     const val = holdingValue(h);
     const rat = holdingRatio(h, p);
     const { price, pe, peVal, pnl } = priceDisplay(h.symbol, h.cost, h.value);
-    const peClass = peColorClass(peVal, h.target_pe);
+    const peClass = peColorClass(peVal, h.target_pe, true);  // 美股：PE>100无条件标红
     const tagEl = (h.tags || []).length > 0
       ? `<span class="tag tag-risk">风投</span>`
       : '';
