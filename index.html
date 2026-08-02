@@ -602,6 +602,16 @@ function setDiag(msg) {
 const formatCN = (n, intOnly) => { if (n == null) return '---'; const s = String(intOnly && n >= 10000 ? Math.round(n) : n < 10000 ? Math.round(n) : (() => { const [ip] = n.toFixed(2).split('.'); return Math.round(n) === Number(ip) ? ip : Math.round(n).toString(); })()); if (s.length <= 4) return s; let r = ''; let c = 0; for (let i = s.length - 1; i >= 0; i--) { r = s[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r; };
 const formatCNDec = (n) => { if (n == null) return '---'; if (n < 10000) return String(Math.round(n)); const s = n.toFixed(2); const [intPart, decPart] = s.split('.'); let r = ''; let c = 0; for (let i = intPart.length - 1; i >= 0; i--) { r = intPart[i] + r; c++; if (c === 4 && i > 0) { r = ',' + r; c = 0; } } return r + '.' + decPart; };
 const CNY = (n, intOnly) => n == null ? '---' : '¥' + (intOnly ? formatCN(n, true) : formatCNDec(n));
+// 带小数点对齐的金额显示——整数部分右对齐 + 固定宽度小数部分
+const CNYalign = (n) => {
+  if (n == null) return '---';
+  const s = formatCNDec(n);
+  const dotIdx = s.indexOf('.');
+  if (dotIdx < 0) return '<span style="display:inline-flex;justify-content:flex-end;"><span>¥' + s + '</span><span style="width:2ch;text-align:left;"></span></span>';
+  const intPart = s.substring(0, dotIdx);
+  const decPart = s.substring(dotIdx);  // ".67"
+  return '<span style="display:inline-flex;justify-content:flex-end;"><span>¥' + intPart + '</span><span style="width:2.2ch;text-align:left;">' + decPart + '</span></span>';
+};
 const PCT = (n) => n == null ? '---' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const NUM = (n, d=2) => n == null ? '---' : Number(n).toFixed(d);
 
@@ -881,7 +891,7 @@ const EMBEDDED_PORTFOLIO = {
         "type": "固收"
       },
       {
-        "name": "实物黄金 (300g)",
+        "name": "实物黄金，300g",
         "value": 270000,
         "ratio": 3.59,
         "type": "黄金"
@@ -1797,9 +1807,9 @@ function showDefenseDetail() {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? goldValue : a.value;
       const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);"> (前日银行金条 ¥' + goldPerGram + '/g)</span>' : '';
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
+      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;">
         <span style="font-weight:500;">${a.name}${priceNote}</span>
-        <span style="text-align:right;"><span style="font-weight:600;color:var(--text);">${CNY(itemValue)}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
+        <span style="font-variant-numeric:tabular-nums;">${CNYalign(itemValue)}<span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
       </div>`;
     }
   }
