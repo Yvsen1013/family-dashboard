@@ -245,7 +245,7 @@ tr:hover td { background: var(--surface-hover); }
   max-width: 640px; width: 90%; max-height: 80vh; overflow-y: auto;
   box-shadow: 6px 6px 0 var(--border);
 }
-.overlay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.overlay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .overlay-header h2 { margin-bottom: 0; }
 .overlay-header h2::before { display: none; }
 .overlay-close {
@@ -264,13 +264,13 @@ tr:hover td { background: var(--surface-hover); }
 .pos-mgr-table tr:hover td { background: rgba(217, 119, 87, 0.06); }
 .returns-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 0; border-bottom: 1px dashed #e6d5b4;
+  padding: 8px 0; border-bottom: 1px dashed #e6d5b4;
 }
 .returns-row:last-child { border-bottom: none; }
-.returns-label { font-size: 14px; font-weight: 600; }
-.returns-period { font-size: 11px; color: var(--text-muted); }
-.returns-value { font-size: 20px; font-weight: 400; text-align: right; font-family: var(--num-font); letter-spacing: 1px; }
-.returns-pct { font-size: 16px; font-weight: 600; text-align: right; min-width: 80px; }
+.returns-label { font-size: 13px; font-weight: 600; }
+.returns-period { font-size: 10px; color: var(--text-muted); }
+.returns-value { font-size: 17px; font-weight: 400; text-align: right; font-family: var(--num-font); letter-spacing: 0.5px; }
+.returns-pct { font-size: 13px; font-weight: 600; text-align: right; min-width: 70px; }
 .returns-positive { color: var(--green); }
 .returns-negative { color: var(--red); }
 
@@ -337,6 +337,10 @@ tr:hover td { background: var(--surface-hover); }
   .mobile-block { display: block; }
 
   .overlay-card { padding: 20px; width: 95%; max-width: none; box-shadow: 4px 4px 0 var(--border); }
+  .returns-row { padding: 6px 0; }
+  .returns-label { font-size: 12px; }
+  .returns-value { font-size: 16px; }
+  .returns-pct { font-size: 12px; }
   .framework-box { gap: 6px; padding: 12px 14px; }
   .framework-step { font-size: 11px; padding: 4px 10px; }
 }
@@ -483,7 +487,7 @@ tr:hover td { background: var(--surface-hover); }
       <button class="overlay-close" onclick="closeReturnsDetail()">✕</button>
     </div>
     <div class="overlay-body" id="returnsDetail"></div>
-    <div style="margin-top:16px;font-size:11px;color:var(--text-muted);">
+    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
       每日 17:00 自动记录快照 · 首次记录：<span id="firstSnapshotDate">---</span>
     </div>
   </div>
