@@ -1792,12 +1792,12 @@ function showDefenseDetail() {
   const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
   for (const [type, items] of Object.entries(groups)) {
-    html += `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:20px 0 12px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
+    html += `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? goldValue : a.value;
       const priceNote = isGold ? ' <span style="font-size:11px;color:var(--text-muted);"> (前日银行金条 ¥' + goldPerGram + '/g)</span>' : '';
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(42,46,58,0.3);">
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
         <span style="font-weight:500;">${a.name}${priceNote}</span>
         <span style="text-align:right;"><span style="font-weight:600;color:var(--text);">${CNY(itemValue)}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px;">${a.ratio}%</span></span>
       </div>`;
