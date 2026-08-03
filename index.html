@@ -383,7 +383,7 @@ tr:hover td { background: var(--surface-hover); }
     <div class="value" style="color:var(--amber);" id="fcnAssets">---</div>
     <div class="sub" id="fcnRatio"></div>
   </div>
-  <div class="metric-card" id="metricQiming">
+  <div class="metric-card clickable" onclick="showQimingDetail()" title="点击查看启明VC详情" id="metricQiming">
     <div class="label">启明剩余</div>
     <div class="value" style="color:var(--purple);" id="qimingValue">---</div>
     <div class="sub" id="qimingNote"></div>
@@ -480,6 +480,17 @@ tr:hover td { background: var(--surface-hover); }
       <button id="defenseUndoBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--red);color:white;" onclick="undoDefenseUpdate()">撤销</button>
     </div>
     <div class="overlay-body" id="defenseDetail"></div>
+  </div>
+</div>
+
+<!-- 启明VC详情弹窗 -->
+<div id="qimingOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeQimingDetail()">
+  <div class="overlay-card" style="max-width:720px;">
+    <div class="overlay-header">
+      <div></div>
+      <button class="overlay-close" onclick="closeQimingDetail()" title="关闭">&times;</button>
+    </div>
+    <div class="overlay-body" id="qimingDetail"></div>
   </div>
 </div>
 
@@ -647,7 +658,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 9;
+const PORTFOLIO_DATA_VERSION = 10;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -937,6 +948,10 @@ const EMBEDDED_PORTFOLIO = {
     "value": 4657000,
     "ratio": 38.23,
     "note": "非流动性资产，不计入可配置资产"
+  },
+  "qimingVC": {
+    "listed": [],
+    "declared": []
   }
 };
 
@@ -1114,6 +1129,8 @@ function loadPortfolioData() {
     portfolio = EMBEDDED_PORTFOLIO;
     localStorage.removeItem('family_portfolio');
   }
+  // 向后兼容：旧数据可能没有 qimingVC
+  if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
 }
 
 function renderAllPortfolio() {
@@ -1843,6 +1860,265 @@ function renderQimingVC() {
   document.getElementById('qimingValue').textContent = CNY(ill.value, true);
   document.getElementById('qimingNote').innerHTML = '占总资产 ' + (ill.value / computeTotalAssets() * 100).toFixed(1) + '%<span class="mobile-block"> (不计入可配置资产)</span>';
 }
+
+// ── 启明VC详情 ──
+let qimingSearchSeq = 0;
+let qimingSearchResults = [];
+let qimingListedFormVisible = false;
+let qimingDeclaredFormVisible = false;
+
+function showQimingDetail() {
+  renderQimingDetail();
+  document.getElementById('qimingOverlay').style.display = 'flex';
+}
+
+function closeQimingDetail() {
+  qimingListedFormVisible = false;
+  qimingDeclaredFormVisible = false;
+  document.getElementById('qimingOverlay').style.display = 'none';
+}
+
+function renderQimingDetail() {
+  if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
+  const vc = portfolio.qimingVC;
+  let html = '';
+
+  // ── 已上市，未退出 ──
+  html += '<h3 style="font-size:14px;font-weight:600;margin:0 0 12px 0;display:flex;align-items:center;justify-content:space-between;">'
+    + '<span>已上市，未退出</span>'
+    + '<button class="overlay-close" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingListed()">+ 添加</button>'
+    + '</h3>';
+
+  if (qimingListedFormVisible) {
+    html += renderQimingListedForm();
+  }
+
+  if (vc.listed.length === 0) {
+    html += '<p style="font-size:12px;color:var(--text-muted);padding:12px 0;">暂无已上市未退出的项目</p>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--border);">'
+      + '<th style="text-align:left;padding:6px 8px;">股票名称</th>'
+      + '<th style="text-align:right;padding:6px 8px;">投资金额</th>'
+      + '<th style="text-align:right;padding:6px 8px;">投资成本</th>'
+      + '<th style="text-align:right;padding:6px 8px;">当前回报</th>'
+      + '<th style="text-align:right;padding:6px 8px;">盈亏%</th>'
+      + '<th style="text-align:right;padding:6px 8px;">操作</th>'
+      + '</tr></thead><tbody>';
+    for (let i = 0; i < vc.listed.length; i++) {
+      const item = vc.listed[i];
+      const p = getPrice(item.symbol);
+      const curPrice = p ? p.price : null;
+      const curReturn = (curPrice && item.cost > 0) ? (curPrice / item.cost) * item.amount : null;
+      const pnlPct = (curPrice && item.cost > 0) ? ((curPrice - item.cost) / item.cost * 100) : null;
+      const pnlClass = pnlPct === null ? '' : (pnlPct >= 0 ? 'returns-positive' : 'returns-negative');
+
+      html += '<tr style="border-bottom:1px dashed var(--border);">'
+        + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount) + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + (item.cost ? (item.cost < 1 ? item.cost.toFixed(3) : item.cost.toFixed(1)) : '---') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn)) : '<span style="color:var(--text-muted);">加载中</span>') + (curPrice !== null ? ' <span style="font-size:10px;color:var(--text-muted);">@' + (curPrice < 1 ? curPrice.toFixed(3) : curPrice.toFixed(1)) + '</span>' : '') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-weight:600;' + pnlClass + '">' + (pnlPct !== null ? (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%' : '---') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
+        + '</tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  // ── 已申报 ──
+  html += '<h3 style="font-size:14px;font-weight:600;margin:20px 0 12px 0;display:flex;align-items:center;justify-content:space-between;">'
+    + '<span>已申报</span>'
+    + '<button class="overlay-close" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingDeclared()">+ 添加</button>'
+    + '</h3>';
+
+  if (qimingDeclaredFormVisible) {
+    html += renderQimingDeclaredForm();
+  }
+
+  if (vc.declared.length === 0) {
+    html += '<p style="font-size:12px;color:var(--text-muted);padding:12px 0;">暂无已申报项目</p>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--border);">'
+      + '<th style="text-align:left;padding:6px 8px;">公司名称</th>'
+      + '<th style="text-align:left;padding:6px 8px;">计划上市交易所</th>'
+      + '<th style="text-align:right;padding:6px 8px;">操作</th>'
+      + '</tr></thead><tbody>';
+    for (let i = 0; i < vc.declared.length; i++) {
+      const item = vc.declared[i];
+      html += '<tr style="border-bottom:1px dashed var(--border);">'
+        + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
+        + '<td style="padding:6px 8px;">' + item.exchange + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingDeclared(' + i + ')">删除</button></td>'
+        + '</tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  document.getElementById('qimingDetail').innerHTML = html;
+}
+
+function renderQimingListedForm() {
+  return '<div id="qimingListedForm" style="background:var(--surface-hover);border:1.5px dashed var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">'
+    + '<div style="margin-bottom:8px;">'
+    + '<input type="text" id="qimingListedSearch" placeholder="输入股票名称搜索..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);" oninput="qimingSearchStock(this.value)" autocomplete="off">'
+    + '</div>'
+    + '<div id="qimingListedSearchResults" style="max-height:180px;overflow-y:auto;margin-bottom:8px;"></div>'
+    + '<div id="qimingListedFields" style="display:none;">'
+    + '<input type="hidden" id="qimingListedSymbol">'
+    + '<input type="hidden" id="qimingListedMarket">'
+    + '<div style="margin-bottom:6px;"><label style="font-size:11px;color:var(--text-muted);display:block;">股票名称</label><span id="qimingListedNameDisplay" style="font-weight:600;font-size:13px;"></span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">投资金额 (¥)</label><input type="number" id="qimingListedAmount" placeholder="如 100000" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">投资成本 (每股)</label><input type="number" id="qimingListedCost" placeholder="如 15.5" step="0.01" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
+    + '</div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px;">'
+    + '<button style="background:var(--green);color:white;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="confirmQimingListed()">确认新增</button>'
+    + '<button style="background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="cancelQimingListed()">取消</button>'
+    + '</div></div></div>';
+}
+
+function renderQimingDeclaredForm() {
+  return '<div id="qimingDeclaredForm" style="background:var(--surface-hover);border:1.5px dashed var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">公司名称</label><input type="text" id="qimingDeclaredName" placeholder="如 某科技公司" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">计划上市交易所</label><select id="qimingDeclaredExchange" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);">'
+    + '<option value="">请选择</option>'
+    + '<option value="纳斯达克 (NASDAQ)">纳斯达克 (NASDAQ)</option>'
+    + '<option value="纽交所 (NYSE)">纽交所 (NYSE)</option>'
+    + '<option value="港交所 (HKEX)">港交所 (HKEX)</option>'
+    + '<option value="上交所主板">上交所主板</option>'
+    + '<option value="上交所科创板">上交所科创板</option>'
+    + '<option value="深交所主板">深交所主板</option>'
+    + '<option value="深交所创业板">深交所创业板</option>'
+    + '<option value="北交所">北交所</option>'
+    + '</select></div></div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px;">'
+    + '<button style="background:var(--green);color:white;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="confirmQimingDeclared()">确认新增</button>'
+    + '<button style="background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="cancelQimingDeclared()">取消</button>'
+    + '</div></div>';
+}
+
+// 搜索股票
+let qimingSearchTimer = null;
+async function qimingSearchStock(keyword) {
+  clearTimeout(qimingSearchTimer);
+  if (keyword.length < 1) {
+    document.getElementById('qimingListedSearchResults').innerHTML = '';
+    qimingSearchResults = [];
+    return;
+  }
+  qimingSearchTimer = setTimeout(async () => {
+    qimingSearchResults = await searchStocks(keyword);
+    let rhtml = '';
+    for (const r of qimingSearchResults) {
+      const mLabel = r.market === 'SH' || r.market === 'SZ' ? 'A股' : r.market === 'HK' ? '港股' : '美股';
+      rhtml += '<div class="search-result-item" onclick="selectQimingStock(\'' + r.symbol.replace(/'/g, "\\'") + '\',\'' + r.name.replace(/'/g, "\\'") + '\',\'' + r.market + '\')" style="padding:6px 8px;cursor:pointer;border-radius:4px;font-size:13px;">'
+        + r.name + ' <span style="color:var(--text-muted);font-size:11px;">' + r.symbol + '</span> <span style="color:var(--purple);font-size:10px;">' + mLabel + '</span>'
+        + '</div>';
+    }
+    document.getElementById('qimingListedSearchResults').innerHTML = rhtml || '<div style="padding:6px 8px;color:var(--text-muted);font-size:12px;">未找到匹配标的</div>';
+  }, 300);
+}
+
+function selectQimingStock(symbol, name, market) {
+  document.getElementById('qimingListedSymbol').value = symbol;
+  document.getElementById('qimingListedMarket').value = market;
+  document.getElementById('qimingListedNameDisplay').textContent = name + ' (' + symbol + ')';
+  document.getElementById('qimingListedFields').style.display = 'block';
+  document.getElementById('qimingListedSearch').style.display = 'none';
+  document.getElementById('qimingListedSearchResults').innerHTML = '<div style="padding:4px 8px;font-size:12px;color:var(--green);">已选择: ' + name + '</div>';
+}
+
+function addQimingListed() {
+  qimingListedFormVisible = true;
+  renderQimingDetail();
+  setTimeout(() => {
+    const input = document.getElementById('qimingListedSearch');
+    if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 100);
+}
+
+function confirmQimingListed() {
+  const symbol = document.getElementById('qimingListedSymbol').value.trim();
+  const market = document.getElementById('qimingListedMarket').value.trim();
+  const nameDisplay = document.getElementById('qimingListedNameDisplay').textContent;
+  const name = nameDisplay.split(' (')[0];
+  const amount = parseFloat(document.getElementById('qimingListedAmount').value);
+  const cost = parseFloat(document.getElementById('qimingListedCost').value);
+
+  if (!symbol) { alert('请先搜索并选择股票'); return; }
+  if (!amount || amount <= 0) { alert('请填写有效的投资金额'); return; }
+  if (!cost || cost <= 0) { alert('请填写有效的投资成本'); return; }
+
+  if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
+  portfolio.qimingVC.listed.push({ name: name, symbol: symbol, market: market, amount: amount, cost: cost });
+
+  // 注册 Qt Code 以便获取股价
+  const qtCode = buildQtCode(symbol, market);
+  if (qtCode && !QT_MAP[symbol] && !DYNAMIC_QT_MAP[symbol]) { DYNAMIC_QT_MAP[symbol] = qtCode; saveDynamicQtMap(); }
+
+  savePortfolio();
+  qimingListedFormVisible = false;
+  loadPrices(true).then(() => {
+    renderQimingDetail();
+    renderQimingVC();
+  });
+}
+
+function cancelQimingListed() {
+  qimingListedFormVisible = false;
+  renderQimingDetail();
+}
+
+function deleteQimingListed(index) {
+  if (!portfolio.qimingVC) return;
+  portfolio.qimingVC.listed.splice(index, 1);
+  savePortfolio();
+  renderQimingDetail();
+  renderQimingVC();
+}
+
+function addQimingDeclared() {
+  qimingDeclaredFormVisible = true;
+  renderQimingDetail();
+  setTimeout(() => {
+    const input = document.getElementById('qimingDeclaredName');
+    if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 100);
+}
+
+function confirmQimingDeclared() {
+  const name = document.getElementById('qimingDeclaredName').value.trim();
+  const exchange = document.getElementById('qimingDeclaredExchange').value;
+
+  if (!name) { alert('请填写公司名称'); return; }
+  if (!exchange) { alert('请选择计划上市交易所'); return; }
+
+  if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
+  portfolio.qimingVC.declared.push({ name: name, exchange: exchange });
+
+  savePortfolio();
+  qimingDeclaredFormVisible = false;
+  renderQimingDetail();
+}
+
+function cancelQimingDeclared() {
+  qimingDeclaredFormVisible = false;
+  renderQimingDetail();
+}
+
+function deleteQimingDeclared(index) {
+  if (!portfolio.qimingVC) return;
+  portfolio.qimingVC.declared.splice(index, 1);
+  savePortfolio();
+  renderQimingDetail();
+}
+
+// 点击遮罩关闭
+document.getElementById('qimingOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeQimingDetail();
+});
 
 function showDefenseDetail() {
   if (!portfolio || !portfolio.defense) return;
