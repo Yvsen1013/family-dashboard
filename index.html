@@ -1025,6 +1025,43 @@ function scriptTencentQuotes(codes) {
   });
 }
 
+// ── PE TTM 修正：从 jsonblob 读取 westock-data 的准确 PE，覆盖 qt.gtimg.cn 的 PE(静) ──
+const PE_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc5c4-5bb0-7954-ab27-a1e2cc460269';
+let peBlobCache = null;
+let peBlobFetchTime = 0;
+const PE_BLOB_TTL = 600000; // 10分钟内不重复请求
+
+async function patchPEFromBlob(prices) {
+  try {
+    const now = Date.now();
+    if (!peBlobCache || (now - peBlobFetchTime) > PE_BLOB_TTL) {
+      const resp = await fetch(PE_BLOB_URL);
+      if (!resp.ok) return;
+      peBlobCache = await resp.json();
+      peBlobFetchTime = now;
+    }
+    const peData = peBlobCache && peBlobCache.pe_ttm;
+    if (!peData) return;
+    // 检查数据新鲜度（超过48小时视为过期）
+    const ageSec = now/1000 - (peBlobCache.updated_at || 0);
+    if (ageSec > 172800) return;
+
+    let patched = 0;
+    for (const [qtCode, peVal] of Object.entries(peData)) {
+      const symbol = QT_REVERSE[qtCode];
+      if (symbol && prices[symbol] && peVal != null) {
+        prices[symbol].pe = peVal;
+        patched++;
+      }
+    }
+    if (patched > 0 && location.hostname === 'localhost') {
+      console.log('[PE] blob 修正了 ' + patched + ' 只标的 PE，数据年龄 ' + Math.round(ageSec/3600) + 'h');
+    }
+  } catch(e) {
+    // 静默失败，回退到 qt.gtimg.cn PE
+  }
+}
+
 async function loadPrices(force) {
   try {
     const codes = getFullQtCodes();
@@ -1039,6 +1076,8 @@ async function loadPrices(force) {
     }
     var n = Object.keys(results).length;
     if (n > 0) {
+      // 用 westock-data 的 PE TTM 覆盖 qt.gtimg.cn 的 PE(静)
+      await patchPEFromBlob(results);
       prices = results;
       document.getElementById('priceStatus').innerHTML =
         '<span class="live-dot"></span>实时股价 ' + new Date().toLocaleTimeString('zh-CN');
