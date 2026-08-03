@@ -851,7 +851,7 @@ const EMBEDDED_PORTFOLIO = {
         "ratio": 26.58,
         "fcn_contracts": [
           {
-            "id": "No.1",
+            "id": "一号",
             "underlying": "腾讯控股",
             "symbol": "0700.HK",
             "value": 1000000,
@@ -862,7 +862,7 @@ const EMBEDDED_PORTFOLIO = {
             "cost": 421.0
           },
           {
-            "id": "No.2",
+            "id": "二号",
             "underlying": "腾讯控股",
             "symbol": "0700.HK",
             "value": 1000000,
@@ -1530,7 +1530,9 @@ function confirmAddFcn() {
   if (!fcnGroup) { pv.style.display = 'block'; pv.innerHTML = '<span style="color:var(--red);">找不到FCN资产组</span>'; return; }
   if (!fcnGroup.fcn_contracts) fcnGroup.fcn_contracts = [];
 
-  var newId = 'No.' + (fcnGroup.fcn_contracts.length + 1);
+  var cnNums = ['一','二','三','四','五','六','七','八','九','十'];
+  var idx = fcnGroup.fcn_contracts.length + 1;
+  var newId = (idx <= 10) ? cnNums[idx-1] : ('第'+idx+'号');
   var newContract = {
     id: newId, underlying: underlying, symbol: symbol, value: value,
     ratio: 0, strike: strike, coupon_rate: coupon, expiry: expiry, cost: strike
