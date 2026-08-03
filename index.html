@@ -1899,7 +1899,7 @@ function renderQimingDetail() {
       + '<th style="text-align:right;padding:6px 8px;">投资金额</th>'
       + '<th style="text-align:right;padding:6px 8px;">投资成本</th>'
       + '<th style="text-align:right;padding:6px 8px;">当前股价</th>'
-      + '<th style="text-align:right;padding:6px 8px;">当前回报</th>'
+      + '<th style="text-align:right;padding:6px 8px 6px 24px;">当前回报</th>'
       + '<th style="text-align:right;padding:6px 8px;">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.listed.length; i++) {
@@ -1919,7 +1919,7 @@ function renderQimingDetail() {
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount) + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + costStr + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + priceStr + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn)) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
+        + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn), true) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
         + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
         + '</tr>';
     }
