@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='30',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='31',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1989,6 +1989,7 @@ function renderQimingDetail() {
       + '<thead><tr style="border-bottom:2px solid var(--border);">'
       + '<th style="text-align:left;padding:6px 8px;">公司名称</th>'
       + '<th style="text-align:left;padding:6px 8px;">计划上市交易所</th>'
+      + '<th style="text-align:left;padding:6px 8px;">状态</th>'
       + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.declared.length; i++) {
@@ -1996,6 +1997,7 @@ function renderQimingDetail() {
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
         + '<td style="padding:6px 8px;">' + item.exchange + '</td>'
+        + '<td style="padding:6px 8px;">' + (item.status || '') + '</td>'
         + '<td style="padding:6px 8px;text-align:right;" class="qiming-hide-mobile"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingDeclared(' + i + ')">删除</button></td>'
         + '</tr>';
     }
@@ -2039,7 +2041,9 @@ function renderQimingDeclaredForm() {
     + '<option value="深交所主板">深交所主板</option>'
     + '<option value="深交所创业板">深交所创业板</option>'
     + '<option value="北交所">北交所</option>'
-    + '</select></div></div>'
+    + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">状态</label><input type="text" id="qimingDeclaredStatus" placeholder="如 已过会、已提交招股书" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
+    + '</div>'
     + '<div style="margin-top:10px;display:flex;gap:8px;">'
     + '<button style="background:var(--green);color:white;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="confirmQimingDeclared()">确认新增</button>'
     + '<button style="background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="cancelQimingDeclared()">取消</button>'
@@ -2138,12 +2142,13 @@ function addQimingDeclared() {
 function confirmQimingDeclared() {
   const name = document.getElementById('qimingDeclaredName').value.trim();
   const exchange = document.getElementById('qimingDeclaredExchange').value;
+  const status = document.getElementById('qimingDeclaredStatus').value.trim();
 
   if (!name) { alert('请填写公司名称'); return; }
   if (!exchange) { alert('请选择计划上市交易所'); return; }
 
   if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
-  portfolio.qimingVC.declared.push({ name: name, exchange: exchange });
+  portfolio.qimingVC.declared.push({ name: name, exchange: exchange, status: status });
 
   savePortfolio();
   qimingDeclaredFormVisible = false;
