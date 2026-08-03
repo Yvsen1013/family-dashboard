@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='24',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='25',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -659,7 +659,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 12;
+const PORTFOLIO_DATA_VERSION = 13;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -673,6 +673,26 @@ const EMBEDDED_PORTFOLIO = {
         "total_value": 1269599,
         "ratio": 16.87,
         "holdings": [
+          {
+            "name": "E大长赢 (新)",
+            "symbol": null,
+            "market": "CN",
+            "value": 164622,
+            "ratio": 2.19,
+            "cost": null,
+            "note": "",
+            "tags": []
+          },
+          {
+            "name": "E大长赢",
+            "symbol": null,
+            "market": "CN",
+            "value": 91973,
+            "ratio": 1.22,
+            "cost": null,
+            "note": "",
+            "tags": []
+          },
           {
             "name": "腾讯控股",
             "symbol": "0700.HK",
