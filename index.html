@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新
-(function(){var V='12',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='13',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1116,17 +1116,33 @@ async function loadPrices(force) {
 
 function refreshPrices() { loadPrices(true); }
 
+function deepMergeDefaults(def, saved) {
+  if (saved == null) return def;
+  if (Array.isArray(saved)) return saved;
+  if (typeof saved !== 'object') return saved;
+  const res = {};
+  for (var k in def) { if (def.hasOwnProperty(k)) res[k] = deepMergeDefaults(def[k], saved[k]); }
+  for (var k2 in saved) { if (saved.hasOwnProperty(k2) && !(k2 in res)) res[k2] = saved[k2]; }
+  return res;
+}
+
 function loadPortfolioData() {
   loadDynamicQtMap();
   const saved = localStorage.getItem('family_portfolio');
   const savedVer = localStorage.getItem('family_portfolio_ver');
   localLastModified = localStorage.getItem('portfolio_local_modified') || null;
-  // 版本不匹配 → 废弃旧缓存，使用最新内嵌数据
-  if (saved && savedVer && String(savedVer) === String(PORTFOLIO_DATA_VERSION)) {
-    try { portfolio = JSON.parse(saved); } catch(e) { portfolio = EMBEDDED_PORTFOLIO; }
+  let parsed = null;
+  if (saved) { try { parsed = JSON.parse(saved); } catch(e) { parsed = null; } }
+  if (parsed) {
+    // 版本升级时保留用户数据，只补充缺失字段，避免丢弃本地/云端添加的启明VC、狩猎清单等
+    portfolio = deepMergeDefaults(EMBEDDED_PORTFOLIO, parsed);
+    // 成功迁移后把版本号更新到当前，下次不再走合并分支
+    if (String(savedVer) !== String(PORTFOLIO_DATA_VERSION)) {
+      localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+      savePortfolio();
+    }
   } else {
     portfolio = EMBEDDED_PORTFOLIO;
-    localStorage.removeItem('family_portfolio');
   }
   // 向后兼容：旧数据可能没有 qimingVC
   if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
