@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='33',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='34',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -161,6 +161,8 @@ tr:hover td { background: var(--surface-hover); }
 .fcn-days.urgent { background: rgba(207,75,60,0.12); color: var(--red); }
 .fcn-days.soon { background: rgba(217,161,59,0.15); color: var(--amber); }
 .fcn-days.safe { background: rgba(46,139,70,0.12); color: var(--green); }
+.fcn-expire-btn { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 600; border: none; background: var(--red); color: #fff; cursor: pointer; }
+.fcn-expire-btn:hover { opacity: 0.85; }
 .fcn-grid {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: 6px 8px;
@@ -2413,7 +2415,8 @@ function renderFCN(p) {
   let hasWarning = false;
   let warningText = '';
 
-  for (const c of fcn.fcn_contracts) {
+  for (let i = 0; i < fcn.fcn_contracts.length; i++) {
+    const c = fcn.fcn_contracts[i];
     const expiry = new Date(c.expiry + 'T00:00:00');
     const daysLeft = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
 
@@ -2439,10 +2442,15 @@ function renderFCN(p) {
       warningText = 'FCN ' + c.id + ' 现价已低于行权价，到期可能触发接货！';
     }
 
+    // 已到期则显示"到期"按钮
+    const daysBadge = daysLeft <= 0
+      ? '<button class="fcn-expire-btn" onclick="handleFcnExpire(' + i + ')">到期</button>'
+      : '<span class="fcn-days ' + daysCls + '">' + daysLeft + '天</span>';
+
     html += `<div class="fcn-card">
       <div class="fcn-header">
         <span class="fcn-title">${c.id} · ${c.underlying}</span>
-        <span class="fcn-days ${daysCls}">${daysLeft}天</span>
+        ${daysBadge}
       </div>
       <div class="fcn-grid">
         <div class="fcn-item"><span class="fcn-label">面额</span><span class="fcn-val">${CNY(c.value)}</span></div>
@@ -2461,6 +2469,22 @@ function renderFCN(p) {
   } else {
     document.getElementById('fcnWarning').style.display = 'none';
   }
+}
+
+// FCN 到期处理：确认后删除并重编号
+function handleFcnExpire(index) {
+  if (!confirm('确认该产品已到期')) return;
+  const fcnGroup = portfolio.attack.assets[2];
+  if (!fcnGroup || !fcnGroup.fcn_contracts) return;
+  fcnGroup.fcn_contracts.splice(index, 1);
+  // 重编号：一号、二号、三号...
+  const chineseNums = ['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五'];
+  fcnGroup.fcn_contracts.forEach((c, i) => {
+    c.id = (i < chineseNums.length ? chineseNums[i] : String(i + 1)) + '号';
+  });
+  fcnGroup.total_value = fcnGroup.fcn_contracts.reduce((s, c) => s + c.value, 0);
+  savePortfolio();
+  loadPortfolio();
 }
 
 function renderWatchlist(p) {
