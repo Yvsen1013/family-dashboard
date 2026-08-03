@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='17',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='18',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1943,7 +1943,7 @@ function renderQimingDetail() {
 
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount) + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount, true) + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + costStr + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + priceStr + '</td>'
         + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn), true) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
