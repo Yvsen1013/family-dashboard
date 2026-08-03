@@ -1130,11 +1130,11 @@ function savePortfolio() {
 // ───────── 云端同步（JSONBlob，零配置） ─────────
 // 无需注册、无需API Key，自动跨设备同步
 // 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
-const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc026-e255-737c-b4b9-82d5236098b0';
+const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc5d9-b4f9-7630-ac8d-57aa3399f9dc';
 let cloudLastModified = null;
 let localLastModified = null;
 let isCloudSyncing = false;
-let lastCloudSaveTime = 0;
+let lastCloudSaveTime = parseInt(localStorage.getItem('last_cloud_save') || '0');
 
 async function loadPortfolioFromCloud() {
   try {
@@ -1142,6 +1142,7 @@ async function loadPortfolioFromCloud() {
     const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
     const resp = await fetch(CLOUD_BLOB_URL + '?t=' + Date.now(), { signal: ctrl.signal });
     clearTimeout(timer);
+    if (resp.status === 404) return { notFound: true };
     if (!resp.ok) return null;
     const blob = await resp.json();
     if (blob && blob.data) return { data: blob.data, updated_at: blob.lastModified };
@@ -1165,6 +1166,7 @@ async function savePortfolioToCloud() {
     if (resp.ok) {
       cloudLastModified = localLastModified;
       lastCloudSaveTime = Date.now();
+      localStorage.setItem('last_cloud_save', String(lastCloudSaveTime));
     }
   } catch(e) { console.warn('云端保存失败:', e); }
 }
@@ -1174,7 +1176,16 @@ async function syncFromCloud() {
   isCloudSyncing = true;
   try {
     const cloud = await loadPortfolioFromCloud();
-    if (cloud && cloud.data && cloud.data.attack) {
+
+    // Keep-alive: 2小时无条件PUT一次，防止blob过��
+    if (Date.now() - lastCloudSaveTime > 2 * 60 * 60 * 1000) {
+      await savePortfolioToCloud();
+    }
+
+    if (cloud && cloud.notFound) {
+      // Blob 已过期，静默跳过（需手动重建 blob 并更新 CLOUD_BLOB_URL）
+      console.warn('云端 blob 已过期，跨设备同步暂停');
+    } else if (cloud && cloud.data && cloud.data.attack) {
       cloudLastModified = cloud.updated_at;
       var cloudTime = new Date(cloud.updated_at).getTime();
       var localTime = localLastModified ? new Date(localLastModified).getTime() : 0;
@@ -1193,11 +1204,6 @@ async function syncFromCloud() {
         renderQimingVC();
       } else if (localTime > cloudTime) {
         // 本地比云端新 → 上传本地
-        await savePortfolioToCloud();
-      }
-
-      // Keep-alive: 2小时无条件PUT一次，防止blob过期
-      if (Date.now() - lastCloudSaveTime > 2 * 60 * 60 * 1000) {
         await savePortfolioToCloud();
       }
     } else {
