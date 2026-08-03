@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='23',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='24',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -659,7 +659,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 11;
+const PORTFOLIO_DATA_VERSION = 12;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1112,13 +1112,21 @@ function loadPortfolioData() {
   let parsed = null;
   if (saved) { try { parsed = JSON.parse(saved); } catch(e) { parsed = null; } }
   if (parsed) {
-    // 版本升级时保留用户数据，只补充缺失字段，避免丢弃本地/云端添加的启明VC、狩猎清单等
-    portfolio = deepMergeDefaults(EMBEDDED_PORTFOLIO, parsed);
-    // 成功迁移后把版本号更新到当前，下次不再走合并分支
     if (String(savedVer) !== String(PORTFOLIO_DATA_VERSION)) {
+      // 版本升级：以 EMBEDDED_PORTFOLIO 为基准，只保留用户自主添加的数据
+      portfolio = JSON.parse(JSON.stringify(EMBEDDED_PORTFOLIO));
+      // 用户自主数据：FCN、启明VC、watchlist、huntingList
+      if (parsed.fcnBond) portfolio.fcnBond = parsed.fcnBond;
+      if (parsed.qimingVC) portfolio.qimingVC = parsed.qimingVC;
+      if (parsed.watchlist) portfolio.watchlist = parsed.watchlist;
+      if (parsed.huntingList) portfolio.huntingList = parsed.huntingList;
+      // 防守端 userAssets 保留用户自定义
+      if (parsed.defense && parsed.defense.userAssets) portfolio.defense.userAssets = parsed.defense.userAssets;
       localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
       savePortfolio();
+      return;
     }
+    portfolio = deepMergeDefaults(EMBEDDED_PORTFOLIO, parsed);
   } else {
     portfolio = EMBEDDED_PORTFOLIO;
   }
