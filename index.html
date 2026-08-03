@@ -2257,7 +2257,7 @@ function renderWatchlist(p) {
       <button class="watch-card-delete" onclick="confirmDeleteWatch('${w.symbol}','${w.name.replace(/'/g,'\\\'')}')" title="不再追踪">✕</button>
       <div class="stock-name">${w.name} ${w.note ? '<span style="font-size:11px;color:var(--text-muted);"> (' + w.note + ')</span>' : ''}</div>
       <div class="stock-symbol">${w.symbol || '---'} · ${w.market}</div>
-      <div class="stock-price">${priceStr}<span class="stock-pe">${q && q.pe != null && q.pe >= 0 ? NUM(q.pe, 1) : '---'}</span></div>
+      <div class="stock-price">${priceStr}<span class="stock-pe">/${q && q.pe != null && q.pe >= 0 ? NUM(q.pe, 1) : '---'}</span></div>
       ${w.target_price ? '<div class="stock-target">目标: ' + w.target_price + '</div>' : ''}
       ${w.target_pe ? '<div class="stock-target">PE目标区间: ' + w.target_pe + '</div>' : ''}
       ${w.target_mcap ? '<div class="stock-target">目标市值: ' + w.target_mcap + '</div>' : ''}
