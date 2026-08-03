@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='20',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='21',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1956,7 +1956,7 @@ function renderQimingDetail() {
         + '</tr>';
     }
     html += '</tbody><tfoot><tr style="border-top:2px solid var(--border);font-weight:600;background:var(--surface-hover);">'
-      + '<td style="padding:6px 8px;">汇总</td>'
+      + '<td style="padding:6px 8px;">总计</td>'
       + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(qmTotalAmount, true) + '</td>'
       + '<td class="qiming-hide-mobile"></td>'
       + '<td class="qiming-hide-mobile"></td>'
