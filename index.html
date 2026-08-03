@@ -1102,7 +1102,7 @@ async function loadPrices(force) {
 
 function refreshPrices() { loadPrices(true); }
 
-function loadPortfolio() {
+function loadPortfolioData() {
   loadDynamicQtMap();
   const saved = localStorage.getItem('family_portfolio');
   const savedVer = localStorage.getItem('family_portfolio_ver');
@@ -1114,10 +1114,19 @@ function loadPortfolio() {
     portfolio = EMBEDDED_PORTFOLIO;
     localStorage.removeItem('family_portfolio');
   }
+}
+
+function renderAllPortfolio() {
   renderMetrics(portfolio);
   renderPositions(portfolio);
   renderFCN(portfolio);
   renderWatchlist(portfolio);
+  renderQimingVC();
+}
+
+function loadPortfolio() {
+  loadPortfolioData();
+  renderAllPortfolio();
 }
 function savePortfolio() {
   localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
@@ -2632,21 +2641,24 @@ document.getElementById('returnsOverlay').addEventListener('click', function(e) 
   if (e.target === this) closeReturnsDetail();
 });
 
-// 启动：先获取汇率，再加载持仓数据和股价
-fetchFX().then(() => {
-  loadPortfolio();
-  // 立即拉取股价——不等待云端同步，避免海外 jsonblob 响应慢导致股价迟迟不显示
+// 启动：先获取汇率，再云端同步 → 加载持仓 → 拉股价
+fetchFX().then(async () => {
+  // Step 1: 仅设置 portfolio 数据（不渲染），让 syncFromCloud 能用 portfolio
+  loadPortfolioData();
+  // Step 2: 等待云端同步完成（云端更新 → 写 localStorage + 更新 portfolio 并自动渲染）
+  await syncFromCloud();
+  // Step 3: 云端数据就绪后，一次性渲染（若云端无变化，此处补渲染）
+  renderAllPortfolio();
+  // Step 4: 拉取股价
   loadPrices();
-  // 云端同步：首次拉取 + 每30秒轮询
+  // Step 5: 设置定时同步（每30秒）
   setInterval(syncFromCloud, 30000);
-  // 同步完成后刷新一次行情，确保新增标的（如狩猎清单新目标）也能拉到股价
-  syncFromCloud().then(() => {
-    loadPrices(true).then(() => {
-      recordSnapshot();
-    });
-  });
-  // 拉取历史收益快照（不阻塞股价加载）
+  // Step 6: 拉取历史收益快照（不阻塞）
   loadRemoteSnapshots();
+  // Step 7: 同步完成后刷新行情并记快照
+  loadPrices(true).then(() => {
+    recordSnapshot();
+  });
 }).catch(e => {
   console.warn('启动失败:', e);
 });
