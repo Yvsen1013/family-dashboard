@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='16',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='17',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1675,7 +1675,7 @@ function loadDynamicQtMap() {
 }
 function saveDynamicQtMap() { localStorage.setItem('dynamic_qt_map', JSON.stringify(DYNAMIC_QT_MAP)); }
 function getFullQtCodes() {
-  // 扫描持仓 + 狩猎清单，自动补注册未在映射表中的 symbol
+  // 扫描持仓 + 狩猎清单 + 启明VC已上市项目，自动补注册未在映射表中的 symbol
   if (portfolio && portfolio.attack && portfolio.attack.assets) {
     for (const ag of portfolio.attack.assets) {
       const scan = [];
@@ -1685,6 +1685,15 @@ function getFullQtCodes() {
         if (QT_MAP[s.symbol] || DYNAMIC_QT_MAP[s.symbol]) continue;
         const qtCode = buildQtCode(s.symbol, s.market.toUpperCase());
         if (qtCode) { DYNAMIC_QT_MAP[s.symbol] = qtCode; }
+      }
+    }
+    // 启明VC已上市项目
+    if (portfolio.qimingVC && portfolio.qimingVC.listed) {
+      for (const item of portfolio.qimingVC.listed) {
+        if (!item.symbol) continue;
+        if (QT_MAP[item.symbol] || DYNAMIC_QT_MAP[item.symbol]) continue;
+        const qtCode = buildQtCode(item.symbol, (item.market || 'CN').toUpperCase());
+        if (qtCode) { DYNAMIC_QT_MAP[item.symbol] = qtCode; }
       }
     }
     // 如果有新注册的 symbol，持久化到 localStorage
