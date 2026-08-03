@@ -2440,10 +2440,13 @@ function confirmAddWatch() {
   var targetPe = peLow + '-' + peHigh;
   var id = 'w' + Date.now();
 
+  // 归一化 market：smartbox 返回 SZ/SH，统一为 CN/HK/US
+  var normMarket = market === 'SZ' || market === 'SH' ? 'CN' : market === 'HK' ? 'HK' : 'US';
+
   var newItem = {
     name: name,
     symbol: symbol,
-    market: market,
+    market: normMarket,
     target_pe: targetPe,
     target_price: null,
     note: '',
