@@ -1898,8 +1898,8 @@ function renderQimingDetail() {
       + '<th style="text-align:left;padding:6px 8px;">股票名称</th>'
       + '<th style="text-align:right;padding:6px 8px;">投资金额</th>'
       + '<th style="text-align:right;padding:6px 8px;">投资成本</th>'
+      + '<th style="text-align:right;padding:6px 8px;">当前股价</th>'
       + '<th style="text-align:right;padding:6px 8px;">当前回报</th>'
-      + '<th style="text-align:right;padding:6px 8px;">盈亏%</th>'
       + '<th style="text-align:right;padding:6px 8px;">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.listed.length; i++) {
@@ -1907,15 +1907,19 @@ function renderQimingDetail() {
       const p = getPrice(item.symbol);
       const curPrice = p ? p.price : null;
       const curReturn = (curPrice && item.cost > 0) ? (curPrice / item.cost) * item.amount : null;
-      const pnlPct = (curPrice && item.cost > 0) ? ((curPrice - item.cost) / item.cost * 100) : null;
-      const pnlClass = pnlPct === null ? '' : (pnlPct >= 0 ? 'returns-positive' : 'returns-negative');
+      const pnlClass = curReturn !== null && curReturn >= item.amount ? 'returns-positive' : 'returns-negative';
+
+      // 货币：港股显示港币，A股显示人民币
+      const isHK = item.market === 'HK';
+      const costStr = item.cost ? (isHK ? 'HK$' : '¥') + (item.cost < 1 ? item.cost.toFixed(3) : item.cost.toFixed(1)) : '---';
+      const priceStr = curPrice !== null ? (isHK ? 'HK$' : '¥') + (curPrice < 1 ? curPrice.toFixed(3) : curPrice.toFixed(1)) : '<span style="color:var(--text-muted);">加载中</span>';
 
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount) + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + (item.cost ? (item.cost < 1 ? item.cost.toFixed(3) : item.cost.toFixed(1)) : '---') + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn)) : '<span style="color:var(--text-muted);">加载中</span>') + (curPrice !== null ? ' <span style="font-size:10px;color:var(--text-muted);">@' + (curPrice < 1 ? curPrice.toFixed(3) : curPrice.toFixed(1)) + '</span>' : '') + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-weight:600;' + pnlClass + '">' + (pnlPct !== null ? (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%' : '---') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + costStr + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + priceStr + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn)) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
         + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
         + '</tr>';
     }
