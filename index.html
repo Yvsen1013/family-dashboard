@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='27',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='28',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -388,7 +388,7 @@ tr:hover td { background: var(--surface-hover); }
     <div class="sub" id="fcnRatio"></div>
   </div>
   <div class="metric-card clickable" onclick="showQimingDetail()" title="点击查看启明VC详情" id="metricQiming">
-    <div class="label">启明剩余</div>
+    <div class="label">启明创投</div>
     <div class="value" style="color:var(--purple);" id="qimingValue">---</div>
     <div class="sub" id="qimingNote"></div>
   </div>
@@ -1931,7 +1931,7 @@ function renderQimingDetail() {
   } else {
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
       + '<thead><tr style="border-bottom:2px solid var(--border);">'
-      + '<th style="text-align:left;padding:6px 8px;">股票名称</th>'
+      + '<th style="text-align:left;padding:6px 8px;">公司名称</th>'
       + '<th style="text-align:right;padding:6px 8px;">投资金额</th>'
       + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">投资成本</th>'
       + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">当前股价</th>'
@@ -2008,13 +2008,13 @@ function renderQimingDetail() {
 function renderQimingListedForm() {
   return '<div id="qimingListedForm" style="background:var(--surface-hover);border:1.5px dashed var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">'
     + '<div style="margin-bottom:8px;">'
-    + '<input type="text" id="qimingListedSearch" placeholder="输入股票名称搜索..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);" oninput="qimingSearchStock(this.value)" autocomplete="off">'
+    + '<input type="text" id="qimingListedSearch" placeholder="输入公司名称搜索..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);" oninput="qimingSearchStock(this.value)" autocomplete="off">'
     + '</div>'
     + '<div id="qimingListedSearchResults" style="max-height:180px;overflow-y:auto;margin-bottom:8px;"></div>'
     + '<div id="qimingListedFields" style="display:none;">'
     + '<input type="hidden" id="qimingListedSymbol">'
     + '<input type="hidden" id="qimingListedMarket">'
-    + '<div style="margin-bottom:6px;"><label style="font-size:11px;color:var(--text-muted);display:block;">股票名称</label><span id="qimingListedNameDisplay" style="font-weight:600;font-size:13px;"></span></div>'
+    + '<div style="margin-bottom:6px;"><label style="font-size:11px;color:var(--text-muted);display:block;">公司名称</label><span id="qimingListedNameDisplay" style="font-weight:600;font-size:13px;"></span></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
     + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">投资金额 (¥)</label><input type="number" id="qimingListedAmount" placeholder="如 100000" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
     + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">投资成本 (每股)</label><input type="number" id="qimingListedCost" placeholder="如 15.5" step="0.01" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
@@ -2383,7 +2383,7 @@ function computeDefenseDynamic() {
   return total;
 }
 
-// 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明剩余
+// 动态计算总资产 = 进攻资产 + 防守资产(含黄金) + 启明创投
 function computeTotalAssets() {
   return computeAttackTotal() + computeDefenseDynamic() + (portfolio.illiquid ? portfolio.illiquid.value : 0);
 }
