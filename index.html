@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='21',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='22',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1173,7 +1173,7 @@ function savePortfolio() {
 // ───────── 云端同步（JSONBlob，零配置） ─────────
 // 无需注册、无需API Key，自动跨设备同步
 // 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
-const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc5d9-b4f9-7630-ac8d-57aa3399f9dc';
+const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc67b-b775-7745-b215-750b210ecb4d';
 let cloudLastModified = null;
 let localLastModified = null;
 let isCloudSyncing = false;
@@ -1187,6 +1187,9 @@ async function loadPortfolioFromCloud() {
     clearTimeout(timer);
     if (resp.status === 404) return { notFound: true };
     if (!resp.ok) return null;
+    // jsonblob 过期后返回 HTML 页面（HTTP 200），用 content-type 区分
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) return { notFound: true };
     const blob = await resp.json();
     if (blob && blob.data) return { data: blob.data, updated_at: blob.lastModified };
   } catch(e) { console.warn('云端加载失败:', e); }
