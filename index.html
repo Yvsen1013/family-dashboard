@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='31',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='32',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1989,7 +1989,7 @@ function renderQimingDetail() {
       + '<thead><tr style="border-bottom:2px solid var(--border);">'
       + '<th style="text-align:left;padding:6px 8px;">公司名称</th>'
       + '<th style="text-align:left;padding:6px 8px;">计划上市交易所</th>'
-      + '<th style="text-align:left;padding:6px 8px;">状态</th>'
+      + '<th style="text-align:left;padding:6px 8px;">审核状态</th>'
       + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.declared.length; i++) {
@@ -2042,7 +2042,7 @@ function renderQimingDeclaredForm() {
     + '<option value="深交所创业板">深交所创业板</option>'
     + '<option value="北交所">北交所</option>'
     + '</select></div>'
-    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">状态</label><input type="text" id="qimingDeclaredStatus" placeholder="如 已过会、已提交招股书" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-muted);display:block;">审核状态</label><input type="text" id="qimingDeclaredStatus" placeholder="如 已过会、已提交招股书" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);"></div>'
     + '</div>'
     + '<div style="margin-top:10px;display:flex;gap:8px;">'
     + '<button style="background:var(--green);color:white;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;" onclick="confirmQimingDeclared()">确认新增</button>'
