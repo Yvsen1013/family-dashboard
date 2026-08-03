@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='14',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='15',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -488,7 +488,9 @@ tr:hover td { background: var(--surface-hover); }
 <!-- 启明VC详情弹窗 -->
 <div id="qimingOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeQimingDetail()">
   <div class="overlay-card" style="max-width:720px;">
-    <div class="overlay-header" style="padding:8px 0 0 0;"></div>
+    <div class="overlay-header" style="padding:8px 0 0 0;">
+      <button style="font-size:11px;padding:4px 10px;width:auto;height:auto;background:var(--surface-hover);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-secondary);" onclick="exportPortfolioData()" title="导出本地数据用于同步到云端">📤 导出数据</button>
+    </div>
     <div class="overlay-body" id="qimingDetail"></div>
   </div>
 </div>
@@ -1893,6 +1895,34 @@ function closeQimingDetail() {
   document.getElementById('qimingOverlay').style.display = 'none';
 }
 
+function exportPortfolioData() {
+  var data = JSON.stringify(portfolio);
+  var b64 = btoa(unescape(encodeURIComponent(data)));
+  var url = 'https://yvsen1013.github.io/family-dashboard/?import=' + b64;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      alert('同步链接已复制到剪贴板！\n\n请在浏览器打开这个链接，数据会自动同步到云端。\n（如果剪贴板失败，请看下方文本框）');
+    }, function() {
+      showExportDialog(url);
+    });
+  } else {
+    showExportDialog(url);
+  }
+}
+
+function showExportDialog(url) {
+  var existing = document.getElementById('exportDialog');
+  if (existing) existing.remove();
+  var div = document.createElement('div');
+  div.id = 'exportDialog';
+  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:20px;z-index:10000;max-width:90vw;max-height:80vh;overflow:auto;';
+  div.innerHTML = '<h3 style="margin:0 0 12px;font-size:14px;">导出数据同步链接</h3>'
+    + '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">复制下方链接，在浏览器打开即可同步到云端：</p>'
+    + '<textarea style="width:100%;height:120px;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:8px;word-break:break-all;" readonly>' + url + '</textarea>'
+    + '<button style="margin-top:8px;padding:6px 16px;background:var(--green);color:#fff;border:none;border-radius:6px;cursor:pointer;" onclick="document.getElementById(\'exportDialog\').remove()">关闭</button>';
+  document.body.appendChild(div);
+}
+
 function renderQimingDetail() {
   if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [], declared: [] };
   const vc = portfolio.qimingVC;
@@ -2940,6 +2970,26 @@ document.getElementById('defenseOverlay').addEventListener('click', function(e) 
 document.getElementById('returnsOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeReturnsDetail();
 });
+
+// 导入数据：从 URL ?import=<base64> 加载本地导出的持仓数据并同步到云端
+(function(){
+  var q = new URLSearchParams(location.search);
+  var imp = q.get('import');
+  if (imp) {
+    try {
+      var json = decodeURIComponent(escape(atob(imp)));
+      var imported = JSON.parse(json);
+      portfolio = imported;
+      localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
+      localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+      localStorage.setItem('portfolio_local_modified', new Date().toISOString());
+      q.delete('import');
+      var cleanUrl = location.pathname + (q.toString() ? '?' + q.toString() : '');
+      history.replaceState(null, '', cleanUrl);
+      console.log('数据导入成功，即将同步到云端');
+    } catch(e) { console.error('导入失败:', e); }
+  }
+})();
 
 // 启动：先获取汇率，再云端同步 → 加载持仓 → 拉股价
 fetchFX().then(async () => {
