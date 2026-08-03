@@ -2244,6 +2244,9 @@ function renderWatchlist(p) {
     }
   }
 
+  console.log('[renderWatchlist] groups:', { US: groups.US.length, HK: groups.HK.length, CN: groups.CN.length, PRIVATE: groups.PRIVATE.length });
+  if (groups.CN.length > 0) console.log('[renderWatchlist] CN items:', groups.CN.map(function(w){return w.name;}));
+
   function buildCard(w) {
     const q = w.symbol ? getPrice(w.symbol) : null;
     const priceStr = q && q.price
@@ -2449,15 +2452,21 @@ function confirmAddWatch() {
 
   // 根据市场添加到对应资产组（支持合并分组如 "A股 & 港股"）
   var targetCategory = market === 'HK' ? '港股' : market === 'US' ? '美股' : 'A股';
+  console.log('[addWatch] market=' + market + ' targetCategory=' + targetCategory + ' newItem=', newItem);
+  var found = false;
   for (var ag2 = 0; ag2 < portfolio.attack.assets.length; ag2++) {
     var cat = portfolio.attack.assets[ag2].category;
+    console.log('[addWatch] checking cat[' + ag2 + ']="' + cat + '" against "' + targetCategory + '", match=' + (cat === targetCategory || (cat && cat.indexOf(targetCategory) !== -1)));
     // 精确匹配 或 包含匹配（如 "A股 & 港股" 同时包含 "A股" 和 "港股"）
     if (cat === targetCategory || (cat && cat.indexOf(targetCategory) !== -1)) {
       if (!portfolio.attack.assets[ag2].watchlist) portfolio.attack.assets[ag2].watchlist = [];
       portfolio.attack.assets[ag2].watchlist.push(newItem);
+      console.log('[addWatch] pushed to cat[' + ag2 + '], watchlist now has ' + portfolio.attack.assets[ag2].watchlist.length + ' items');
+      found = true;
       break;
     }
   }
+  if (!found) console.warn('[addWatch] NO matching category found for: ' + targetCategory);
 
   savePortfolio();
   // 注册 Qt Code 到动态映射，确保下次刷新股价时包含该标的
