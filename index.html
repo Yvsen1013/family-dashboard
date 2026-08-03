@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='18',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='19',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -347,6 +347,8 @@ tr:hover td { background: var(--surface-hover); }
   .returns-pct { font-size: 12px; }
   .framework-box { gap: 6px; padding: 12px 14px; }
   .framework-step { font-size: 11px; padding: 4px 10px; }
+
+  .qiming-hide-mobile { display: none !important; }
 }
 
 </style>
@@ -1910,7 +1912,7 @@ function renderQimingDetail() {
   // ── 已上市，未退出 ──
   html += '<h3 style="font-size:14px;font-weight:600;margin:0 0 12px 0;display:flex;align-items:center;justify-content:space-between;">'
     + '<span>已上市，未退出</span>'
-    + '<button class="overlay-close" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingListed()">+ 添加</button>'
+    + '<button class="overlay-close qiming-hide-mobile" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingListed()">+ 添加</button>'
     + '</h3>';
 
   if (qimingListedFormVisible) {
@@ -1924,10 +1926,10 @@ function renderQimingDetail() {
       + '<thead><tr style="border-bottom:2px solid var(--border);">'
       + '<th style="text-align:left;padding:6px 8px;">股票名称</th>'
       + '<th style="text-align:right;padding:6px 8px;">投资金额</th>'
-      + '<th style="text-align:right;padding:6px 8px;">投资成本</th>'
-      + '<th style="text-align:right;padding:6px 8px;">当前股价</th>'
+      + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">投资成本</th>'
+      + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">当前股价</th>'
       + '<th style="text-align:right;padding:6px 8px 6px 24px;">当前回报</th>'
-      + '<th style="text-align:right;padding:6px 8px;">操作</th>'
+      + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.listed.length; i++) {
       const item = vc.listed[i];
@@ -1944,10 +1946,10 @@ function renderQimingDetail() {
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount, true) + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + costStr + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + priceStr + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + costStr + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + priceStr + '</td>'
         + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn), true) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
+        + '<td style="padding:6px 8px;text-align:right;" class="qiming-hide-mobile"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
         + '</tr>';
     }
     html += '</tbody></table>';
@@ -1956,7 +1958,7 @@ function renderQimingDetail() {
   // ── 已申报 ──
   html += '<h3 style="font-size:14px;font-weight:600;margin:20px 0 12px 0;display:flex;align-items:center;justify-content:space-between;">'
     + '<span>已申报</span>'
-    + '<button class="overlay-close" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingDeclared()">+ 添加</button>'
+    + '<button class="overlay-close qiming-hide-mobile" style="font-size:12px;padding:2px 8px;width:auto;height:auto;" onclick="addQimingDeclared()">+ 添加</button>'
     + '</h3>';
 
   if (qimingDeclaredFormVisible) {
@@ -1970,14 +1972,14 @@ function renderQimingDetail() {
       + '<thead><tr style="border-bottom:2px solid var(--border);">'
       + '<th style="text-align:left;padding:6px 8px;">公司名称</th>'
       + '<th style="text-align:left;padding:6px 8px;">计划上市交易所</th>'
-      + '<th style="text-align:right;padding:6px 8px;">操作</th>'
+      + '<th style="text-align:right;padding:6px 8px;" class="qiming-hide-mobile">操作</th>'
       + '</tr></thead><tbody>';
     for (let i = 0; i < vc.declared.length; i++) {
       const item = vc.declared[i];
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
         + '<td style="padding:6px 8px;">' + item.exchange + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingDeclared(' + i + ')">删除</button></td>'
+        + '<td style="padding:6px 8px;text-align:right;" class="qiming-hide-mobile"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingDeclared(' + i + ')">删除</button></td>'
         + '</tr>';
     }
     html += '</tbody></table>';
