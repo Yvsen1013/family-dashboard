@@ -2089,7 +2089,7 @@ function showDefenseDetail() {
 
   html += '<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:16px;align-items:baseline;">';
   for (const [type, items] of Object.entries(groups)) {
-    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;padding-bottom:4px;border-bottom:1px solid #e6d5b4;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
+    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:700;color:var(--text-secondary);margin:14px 0 6px 0;padding-bottom:4px;border-bottom:1px solid #e6d5b4;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? getGoldValue(a) : (a.value || 0);
