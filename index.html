@@ -492,7 +492,10 @@ tr:hover td { background: var(--surface-hover); }
 <!-- 启明VC详情弹窗 -->
 <div id="qimingOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeQimingDetail()">
   <div class="overlay-card" style="max-width:720px;">
-    <div class="overlay-header" style="padding:8px 0 0 0;"></div>
+    <div class="overlay-header">
+      <h2>已上市，未退出</h2>
+      <button class="overlay-close" onclick="closeQimingDetail()">✕</button>
+    </div>
     <div class="overlay-body" id="qimingDetail"></div>
   </div>
 </div>
@@ -1916,10 +1919,9 @@ function renderQimingDetail() {
   let html = '';
 
   // ── 已上市，未退出 ──
-  html += '<h3 style="font-size:14px;font-weight:600;margin:0 0 12px 0;display:flex;align-items:center;justify-content:space-between;">'
-    + '<span>已上市，未退出</span>'
+  html += '<div style="text-align:right;margin:0 0 12px 0;">'
     + '<button class="position-btn qiming-hide-mobile" style="background:var(--green);" onclick="addQimingListed()">添加</button>'
-    + '</h3>';
+    + '</div>';
 
   if (qimingListedFormVisible) {
     html += renderQimingListedForm();
