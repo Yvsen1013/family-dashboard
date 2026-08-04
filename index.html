@@ -2531,17 +2531,7 @@ function renderWatchlist(p) {
     if (w.symbol === '600938.SS') {
       if (q && q.mcap) {
         const mcapYi = q.mcap / 1e12;
-        let mcapColor = 'var(--text-muted)';
-        if (w.target_mcap) {
-          const m = w.target_mcap.match(/([\d.]+)-([\d.]+)万亿/);
-          if (m) {
-            const low = parseFloat(m[1]), high = parseFloat(m[2]);
-            if (mcapYi < low) mcapColor = 'var(--green)';
-            else if (mcapYi <= high) mcapColor = 'var(--green)';
-            else mcapColor = 'var(--red)';
-          }
-        }
-        extraStr = `<span class="stock-pe" style="color:${mcapColor};">/${mcapYi.toFixed(2)}万亿</span>`;
+        extraStr = `<span class="stock-pe">/${mcapYi.toFixed(2)}万亿</span>`;
       } else {
         extraStr = '<span class="stock-pe">/---</span>';
       }
