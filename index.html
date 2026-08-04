@@ -474,9 +474,9 @@ tr:hover td { background: var(--surface-hover); }
 <!-- 防守资产详情弹窗 -->
 <div id="defenseOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeDefenseDetail()">
   <div class="overlay-card">
-    <div class="overlay-header">
+    <div class="overlay-header" style="margin-bottom:30px;">
       <h2>资产明细</h2>
-      <button id="defenseEditBtn" class="overlay-close" style="font-size:13px;padding:4px 10px;width:auto;" onclick="toggleDefenseEditMode(true)">更新</button>
+      <button id="defenseEditBtn" class="position-btn" style="background:var(--green);" onclick="toggleDefenseEditMode(true)">更新</button>
       <button id="defenseConfirmBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--green);color:white;" onclick="confirmDefenseUpdate()">确认</button>
       <button id="defenseUndoBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--red);color:white;" onclick="undoDefenseUpdate()">撤销</button>
     </div>
@@ -2089,7 +2089,16 @@ function showDefenseDetail() {
 
   html += '<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:16px;align-items:baseline;">';
   for (const [type, items] of Object.entries(groups)) {
-    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:900;color:var(--text-secondary);margin:14px 0 6px 0;padding-bottom:4px;border-bottom:1px solid #e6d5b4;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
+    let groupTotal = 0;
+    for (const a of items) {
+      groupTotal += a.name.includes('黄金') ? getGoldValue(a) : (a.value || 0);
+    }
+    const groupRatio = totalAssets ? (groupTotal / totalAssets * 100).toFixed(2) : '0.00';
+    // 分组标题直接放在父 grid 的三列中，保证与下面各项对齐
+    html += `<span style="font-size:13px;font-weight:900;color:var(--text-secondary);${type!=='固收'?'margin-top:12px;':''}">${typeNames[type]||type}</span>`;
+    html += `<span style="text-align:right;font-weight:900;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(groupTotal, true)}</span>`;
+    html += `<span style="text-align:right;font-size:12px;font-weight:900;">${groupRatio}%</span>`;
+    html += `<div style="grid-column:1/-1;height:0;border-bottom:1px solid #e6d5b4;margin:0 0 6px 0;"></div>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? getGoldValue(a) : (a.value || 0);
@@ -2114,10 +2123,10 @@ function showDefenseDetail() {
           </span>`;
         }
       } else {
-        html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue, true)}</span>`;
+        html += `<span style="text-align:right;padding:3px 0;color:var(--text-secondary);font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue, true)}</span>`;
       }
 
-      html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${ratio}%</span>`;
+      html += `<span style="text-align:right;padding:3px 0;color:var(--text-secondary);font-size:12px;">${ratio}%</span>`;
     }
   }
   html += '</div>';
