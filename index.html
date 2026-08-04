@@ -1945,7 +1945,7 @@ function renderQimingDetail() {
       const priceStr = curPrice !== null ? (isHK ? 'HK$' : '¥') + (curPrice < 1 ? curPrice.toFixed(3) : curPrice.toFixed(1)) : '<span style="color:var(--text-muted);">加载中</span>';
 
       html += '<tr style="border-bottom:1px dashed var(--border);">'
-        + '<td style="padding:6px 8px;font-weight:500;">' + item.name + '</td>'
+        + '<td style="padding:6px 8px;">' + item.name + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount, true) + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + costStr + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + priceStr + '</td>'
