@@ -270,13 +270,11 @@ tr:hover td { background: var(--surface-hover); }
 .pos-mgr-table tr:hover td { background: rgba(217, 119, 87, 0.06); }
 .returns-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 7px 0; border-bottom: 1px dashed #e6d5b4;
+  padding: 7px 0;
 }
-.returns-row:last-child { border-bottom: none; }
 .returns-label { font-size: 13px; font-weight: 600; line-height: 1.3; }
-.returns-label small { display: block; font-size: 10px; font-weight: 400; color: var(--text-muted); margin-top: 1px; }
-.returns-amount { font-size: 16px; font-weight: 400; font-family: var(--num-font); letter-spacing: 0.5px; white-space: nowrap; }
-.returns-amount .returns-pct { font-size: 11px; font-weight: 600; margin-left: 10px; }
+.returns-amount { font-size: 16px; font-weight: 400; font-family: var(--num-font); letter-spacing: 0.5px; white-space: nowrap; color: var(--text); }
+.returns-amount .returns-pct { font-size: 11px; font-weight: 600; margin-left: 14px; }
 .returns-positive { color: var(--green); }
 .returns-negative { color: var(--red); }
 
@@ -500,7 +498,7 @@ tr:hover td { background: var(--surface-hover); }
 <!-- 收益明细弹窗 -->
 <div id="returnsOverlay" class="overlay" style="display:none;">
   <div class="overlay-card">
-    <div class="overlay-header">
+    <div class="overlay-header" style="margin-bottom:20px;">
       <h2>收益明细</h2>
       <span style="font-size:11px;color:var(--text-muted);">每日 17:00 更新</span>
     </div>
@@ -2865,7 +2863,7 @@ function showReturnsDetail() {
         const sign = r.amount >= 0 ? '+' : '';
         html += '<div class="returns-row">'
           + '<span class="returns-label">' + p.label + '</span>'
-          + '<span class="' + cls + ' returns-amount">' + sign + '¥' + formatCN(Math.abs(r.amount)) + '<span class="returns-pct">' + sign + r.pct.toFixed(2) + '%</span></span>'
+          + '<span class="returns-amount">¥' + formatCN(Math.abs(r.amount)) + '<span class="' + cls + ' returns-pct">' + sign + r.pct.toFixed(2) + '%</span></span>'
           + '</div>';
       }
     }
