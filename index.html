@@ -1183,7 +1183,7 @@ function savePortfolio() {
 // ───────── 云端同步（JSONBlob，零配置） ─────────
 // 无需注册、无需API Key，自动跨设备同步
 // 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
-const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fc67b-b775-7745-b215-750b210ecb4d';
+const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fcc66-e62e-77b3-92c2-ca5747ea1338';
 let cloudLastModified = null;
 let localLastModified = null;
 let isCloudSyncing = false;
@@ -1201,7 +1201,14 @@ async function loadPortfolioFromCloud() {
     const ct = resp.headers.get('content-type') || '';
     if (!ct.includes('application/json')) return { notFound: true };
     const blob = await resp.json();
-    if (blob && blob.data) return { data: blob.data, updated_at: blob.lastModified };
+    // 兼容新旧两种格式：旧格式 {data, lastModified} vs 新格式扁平 {attack, ..., _lastModified}
+    if (blob.attack) {
+      return { data: blob, updated_at: blob._lastModified };
+    }
+    if (blob.data) {
+      return { data: blob.data, updated_at: blob.lastModified || blob.data._lastModified };
+    }
+    return null;
   } catch(e) { console.warn('云端加载失败:', e); }
   return null;
 }
@@ -1209,7 +1216,30 @@ async function loadPortfolioFromCloud() {
 async function savePortfolioToCloud() {
   try {
     if (!localLastModified) localLastModified = new Date().toISOString();
-    const payload = { lastModified: localLastModified, data: portfolio };
+
+    // 计算月初总资产基准（供小程序显示"本月收益"）
+    let monthStartTotal = null;
+    try {
+      const snaps = getSnapshots();
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      let baselineDate = null;
+      for (const s of snaps) {
+        if (s.date < monthStart) baselineDate = s.date;
+      }
+      if (!baselineDate && snaps.length > 0) baselineDate = snaps[0].date;
+      if (baselineDate) {
+        const baseline = snaps.find(s => s.date === baselineDate);
+        if (baseline) monthStartTotal = baseline.total;
+      }
+    } catch(e) { /* 无快照时忽略 */ }
+
+    // 扁平化：小程序要求 attack/defense 等字段在顶层，同时保留向后兼容
+    const payload = Object.assign({}, portfolio, {
+      _lastModified: localLastModified,
+      _month_start_total: monthStartTotal
+    });
+
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
     const resp = await fetch(CLOUD_BLOB_URL, {
