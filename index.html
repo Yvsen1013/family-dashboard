@@ -1728,6 +1728,12 @@ function buildQtCode(symbol, market) {
   if (m === 'HK') return 'hk' + String(parseInt(symbol.replace('.HK',''), 10)).padStart(5, '0');
   if (m === 'SH') return 'sh' + symbol.replace('.SS','');
   if (m === 'SZ') return 'sz' + symbol.replace('.SZ','');
+  if (m === 'CN') {
+    const code = symbol.replace('.SS','').replace('.SZ','');
+    if (/^6/.test(code)) return 'sh' + code;
+    if (/^[03]/.test(code)) return 'sz' + code;
+    return null;
+  }
   if (m === 'US') return 'us' + symbol;
   return null;
 }
