@@ -2748,11 +2748,6 @@ function confirmAddWatch() {
   document.getElementById('addWatchPreview').innerHTML = '已添加：<b>' + name + '</b> · PE ' + targetPe + '<br>点击「撤销」可移除';
 }
 
-// 点击弹窗外部关闭
-document.getElementById('addWatchOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeAddWatch();
-});
-
 // 点击搜索框外部关闭下拉
 document.addEventListener('click', function(e) {
   var r = document.getElementById('addWatchResults');
