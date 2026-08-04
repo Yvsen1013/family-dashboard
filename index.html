@@ -276,7 +276,7 @@ tr:hover td { background: var(--surface-hover); }
 .returns-label { font-size: 13px; font-weight: 600; line-height: 1.3; }
 .returns-label small { display: block; font-size: 10px; font-weight: 400; color: var(--text-muted); margin-top: 1px; }
 .returns-amount { font-size: 16px; font-weight: 400; font-family: var(--num-font); letter-spacing: 0.5px; white-space: nowrap; }
-.returns-amount .returns-pct { font-size: 11px; font-weight: 600; margin-left: 6px; }
+.returns-amount .returns-pct { font-size: 11px; font-weight: 600; margin-left: 10px; }
 .returns-positive { color: var(--green); }
 .returns-negative { color: var(--red); }
 
@@ -2857,14 +2857,14 @@ function showReturnsDetail() {
       const r = calcReturn(p.period);
       if (r.amount === null && r.pct === null) {
         html += '<div class="returns-row">'
-          + '<span class="returns-label">' + p.label + '<small>基准：' + p.period + '</small></span>'
+          + '<span class="returns-label">' + p.label + '</span>'
           + '<span class="returns-amount" style="color:var(--text-muted);">---</span>'
           + '</div>';
       } else {
         const cls = r.amount >= 0 ? 'returns-positive' : 'returns-negative';
         const sign = r.amount >= 0 ? '+' : '';
         html += '<div class="returns-row">'
-          + '<span class="returns-label">' + p.label + '<small>基准：' + p.period + '</small></span>'
+          + '<span class="returns-label">' + p.label + '</span>'
           + '<span class="' + cls + ' returns-amount">' + sign + '¥' + formatCN(Math.abs(r.amount)) + '<span class="returns-pct">' + sign + r.pct.toFixed(2) + '%</span></span>'
           + '</div>';
       }
