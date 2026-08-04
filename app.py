@@ -24,7 +24,7 @@ NEODATA_PE_TTL = 3600           # PE缓存1小时
 neodata_pe_cache = {}
 neodata_pe_lock = threading.Lock()
 
-PORT = 8899
+PORT = int(os.environ.get("PORT", 8899))
 
 # ────────────────── 股票代码映射 ──────────────────
 # 腾讯 API 格式: sh=上海, sz=深圳, hk=港股, us=美股
@@ -61,6 +61,11 @@ pe_ttm_last_fetch = 0
 PE_TTM_CACHE_TTL = 300  # 5分钟
 PE_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fc5c4-5bb0-7954-ab27-a1e2cc460269"
 PE_BLOB_KEEPALIVE = 7200  # 2小时无条件推送一次，防止 blob 过期
+
+# ── 小程序数据 Blob ──
+# 聚合所有实时数据（价格、PE TTM、汇率），小程序直读
+MINIAPP_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fcbb2-cfe7-7bc0-9782-152bd7c5b237"
+MINIAPP_PUSH_INTERVAL = 30  # 每30秒推送一次
 
 
 def _read_neodata_token():
@@ -363,6 +368,68 @@ def push_pe_keepalive():
                     _push_pe_to_blob(pe_ttm_cache)
         except Exception:
             pass
+
+
+# ── 汇率获取 ──
+fx_cache = {"HKD_CNY": 0.93, "USD_CNY": 7.25}
+fx_lock = threading.Lock()
+fx_last_fetch = 0
+FX_CACHE_TTL = 3600  # 汇率1小时刷新一次
+
+
+def fetch_exchange_rates():
+    """从 exchangerate-api 获取港币/美元兑人民币汇率"""
+    global fx_cache, fx_last_fetch
+    now = time.time()
+    if (now - fx_last_fetch) < FX_CACHE_TTL and fx_cache:
+        return fx_cache
+    try:
+        req = urllib.request.Request(
+            "https://api.exchangerate-api.com/v4/latest/CNY",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        rates = data.get("rates", {})
+        hkd_cny = safe_float(rates.get("HKD"))
+        usd_cny = safe_float(rates.get("USD"))
+        if hkd_cny and usd_cny:
+            with fx_lock:
+                fx_cache = {
+                    "HKD_CNY": round(1.0 / hkd_cny, 4),
+                    "USD_CNY": round(1.0 / usd_cny, 4)
+                }
+                fx_last_fetch = now
+            return fx_cache
+    except Exception:
+        pass
+    return fx_cache
+
+
+# ── 小程序数据推送 ──
+def push_miniapp_data():
+    """每30秒将实时数据推送到小程序专属 blob"""
+    while True:
+        time.sleep(MINIAPP_PUSH_INTERVAL)
+        try:
+            prices = get_prices()
+            fx = fetch_exchange_rates()
+            with pe_ttm_lock:
+                pe_data = dict(pe_ttm_cache)
+
+            payload = json.dumps({
+                "prices": prices,
+                "pe_ttm": pe_data,
+                "fx": fx,
+                "updated_at": int(time.time())
+            }).encode()
+
+            req = urllib.request.Request(MINIAPP_BLOB_URL, data=payload, method="PUT",
+                headers={"Content-Type": "application/json", "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                print(f"[MiniApp] 推送成功: {len(prices)}只股票, PE={len(pe_data)}, fx={fx}")
+        except Exception as e:
+            print(f"[MiniApp] 推送失败: {e}")
 
 # ────────────────── 持仓数据 ──────────────────
 PORTFOLIO = {
@@ -690,6 +757,9 @@ def run_server():
     print(f"🚀 投资仪表盘已启动 → http://127.0.0.1:{PORT}")
     # 启动 PE 数据 keepalive 线程（每2小时推送到 jsonblob 防止过期）
     threading.Thread(target=push_pe_keepalive, daemon=True).start()
+    # 启动小程序数据推送线程（每30秒推送价格+PE+汇率到专属 blob）
+    threading.Thread(target=push_miniapp_data, daemon=True).start()
+    print(f"📱 小程序数据推送已启动 → 每{MINIAPP_PUSH_INTERVAL}秒推送")
     server.serve_forever()
 
 
