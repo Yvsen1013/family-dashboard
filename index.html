@@ -1955,10 +1955,10 @@ function renderQimingDetail() {
     }
     html += '</tbody><tfoot><tr style="border-top:5px double var(--border);font-weight:600;background-clip:padding-box;">'
       + '<td style="padding:6px 8px;font-weight:700;">总计</td>'
-      + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(qmTotalAmount, true) + '</td>'
+      + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);font-weight:600;">' + CNY(qmTotalAmount, true) + '</td>'
       + '<td class="qiming-hide-mobile"></td>'
       + '<td class="qiming-hide-mobile"></td>'
-      + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);">' + (qmAllRetValid ? CNY(Math.round(qmTotalReturn), true) : '<span style="color:var(--text-muted);">部分未加载</span>') + '</td>'
+      + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);font-weight:600;">' + (qmAllRetValid ? CNY(Math.round(qmTotalReturn), true) : '<span style="color:var(--text-muted);">部分未加载</span>') + '</td>'
       + '<td class="qiming-hide-mobile"></td>'
       + '</tr></tfoot></table>';
   }
