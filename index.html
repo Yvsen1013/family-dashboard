@@ -494,6 +494,7 @@ tr:hover td { background: var(--surface-hover); }
   <div class="overlay-card" style="max-width:720px;">
     <div class="overlay-header">
       <h2>已上市，未退出</h2>
+      <button class="position-btn qiming-hide-mobile" style="background:var(--green);" onclick="addQimingListed()">添加</button>
     </div>
     <div class="overlay-body" id="qimingDetail"></div>
   </div>
@@ -1916,11 +1917,6 @@ function renderQimingDetail() {
   if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [] };
   const vc = portfolio.qimingVC;
   let html = '';
-
-  // ── 已上市，未退出 ──
-  html += '<div style="text-align:right;margin:0 0 12px 0;">'
-    + '<button class="position-btn qiming-hide-mobile" style="background:var(--green);" onclick="addQimingListed()">添加</button>'
-    + '</div>';
 
   if (qimingListedFormVisible) {
     html += renderQimingListedForm();
