@@ -2,12 +2,19 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='35',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='36',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- PWA -->
+<meta name="theme-color" content="#0d332d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="manifest" href="/family-dashboard/manifest.json">
+<link rel="apple-touch-icon" href="/family-dashboard/icon-192.png">
 <title>家庭资产 · 仪表盘</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2953,5 +2960,13 @@ fetchFX().then(async () => {
 refreshTimer = setInterval(() => loadPrices(), 60000);
 </script>
 
+<script>
+// Service Worker 注册（PWA 离线支持）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/family-dashboard/sw.js')
+    .then(function(reg) { console.log('[SW] 已注册', reg.scope); })
+    .catch(function(err) { console.log('[SW] 注册失败', err); });
+}
+</script>
 </body>
 </html>
