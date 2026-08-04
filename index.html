@@ -1946,10 +1946,10 @@ function renderQimingDetail() {
 
       html += '<tr style="border-bottom:1px dashed var(--border);">'
         + '<td style="padding:6px 8px;">' + item.name + '</td>'
-        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);">' + CNY(item.amount, true) + '</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);font-weight:400;">' + CNY(item.amount, true) + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + costStr + '</td>'
         + '<td style="padding:6px 8px;text-align:right;font-family:var(--num-font);" class="qiming-hide-mobile">' + priceStr + '</td>'
-        + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn), true) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
+        + '<td style="padding:6px 8px 6px 24px;text-align:right;font-family:var(--num-font);font-weight:400;' + pnlClass + '">' + (curReturn !== null ? CNY(Math.round(curReturn), true) : '<span style="color:var(--text-muted);">加载中</span>') + '</td>'
         + '<td style="padding:6px 8px;text-align:right;" class="qiming-hide-mobile"><button style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;" onclick="deleteQimingListed(' + i + ')">删除</button></td>'
         + '</tr>';
     }
