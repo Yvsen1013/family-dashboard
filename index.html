@@ -2114,7 +2114,7 @@ function showDefenseDetail() {
           </span>`;
         }
       } else {
-        html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue)}</span>`;
+        html += `<span style="text-align:right;padding:3px 0;font-family:VT323,SF Mono,SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;">${CNY(itemValue, true)}</span>`;
       }
 
       html += `<span style="text-align:right;padding:3px 0;color:var(--text-muted);font-size:12px;">${ratio}%</span>`;
