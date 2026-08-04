@@ -475,7 +475,7 @@ tr:hover td { background: var(--surface-hover); }
 <div id="defenseOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeDefenseDetail()">
   <div class="overlay-card">
     <div class="overlay-header">
-      <h2>防守资产明细</h2>
+      <h2>资产明细</h2>
       <button id="defenseEditBtn" class="overlay-close" style="font-size:13px;padding:4px 10px;width:auto;" onclick="toggleDefenseEditMode(true)">更新</button>
       <button id="defenseConfirmBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--green);color:white;" onclick="confirmDefenseUpdate()">确认</button>
       <button id="defenseUndoBtn" class="overlay-close" style="display:none;font-size:13px;padding:4px 10px;width:auto;background:var(--red);color:white;" onclick="undoDefenseUpdate()">撤销</button>
@@ -2084,12 +2084,12 @@ function showDefenseDetail() {
     groups[a.type].push({ ...a, idx });
   }
 
-  const typeNames = { '固收': '固收+产品', '黄金': '黄金', '现金': '现金' };
+  const typeNames = { '固收': '固收+', '黄金': '黄金', '现金': '现金' };
   const typeIcons = { '固收': '◎', '黄金': '◆', '现金': '⊙' };
 
   html += '<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:16px;align-items:baseline;">';
   for (const [type, items] of Object.entries(groups)) {
-    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
+    html += `<h3 style="grid-column:1/-1;font-size:13px;font-weight:600;color:var(--text-secondary);margin:14px 0 6px 0;padding-bottom:4px;border-bottom:1px solid #e6d5b4;">${typeIcons[type]||''} ${typeNames[type]||type}</h3>`;
     for (const a of items) {
       const isGold = a.name.includes('黄金');
       const itemValue = isGold ? getGoldValue(a) : (a.value || 0);
