@@ -2990,5 +2990,13 @@ fetchFX().then(async () => {
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
 </script>
+<script>
+// 注销旧 Service Worker（清理 PWA 缓存）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) { reg.unregister(); });
+  });
+}
+</script>
 </body>
 </html>
