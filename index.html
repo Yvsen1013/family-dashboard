@@ -659,7 +659,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 14;
+const PORTFOLIO_DATA_VERSION = 15;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1176,7 +1176,9 @@ function savePortfolio() {
 // ───────── 云端同步（JSONBlob，零配置） ─────────
 // 无需注册、无需API Key，自动跨设备同步
 // 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
-const CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fcc66-e62e-77b3-92c2-ca5747ea1338';
+const DEFAULT_CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fdbe6-c395-7e75-a31b-ab941e797d98';
+function getCloudBlobUrl() { return localStorage.getItem('cloud_blob_url') || DEFAULT_CLOUD_BLOB_URL; }
+function setCloudBlobUrl(url) { localStorage.setItem('cloud_blob_url', url); }
 let cloudLastModified = null;
 let localLastModified = null;
 let isCloudSyncing = false;
@@ -1184,9 +1186,10 @@ let lastCloudSaveTime = parseInt(localStorage.getItem('last_cloud_save') || '0')
 
 async function loadPortfolioFromCloud() {
   try {
+    const blobUrl = getCloudBlobUrl();
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
-    const resp = await fetch(CLOUD_BLOB_URL + '?t=' + Date.now(), { signal: ctrl.signal });
+    const resp = await fetch(blobUrl + '?t=' + Date.now(), { signal: ctrl.signal });
     clearTimeout(timer);
     if (resp.status === 404) return { notFound: true };
     if (!resp.ok) return null;
@@ -1206,7 +1209,8 @@ async function loadPortfolioFromCloud() {
   return null;
 }
 
-async function savePortfolioToCloud() {
+async function savePortfolioToCloud(retryOnExpire) {
+  // retryOnExpire: 内部递归标志，防止无限重试
   try {
     if (!localLastModified) localLastModified = new Date().toISOString();
 
@@ -1241,21 +1245,55 @@ async function savePortfolioToCloud() {
       _month_start_total: monthStartTotal
     });
 
+    const blobUrl = getCloudBlobUrl();
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000); // 海外服务，8秒超时防挂起
-    const resp = await fetch(CLOUD_BLOB_URL, {
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(blobUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal: ctrl.signal
     });
     clearTimeout(timer);
+
     if (resp.ok) {
       cloudLastModified = localLastModified;
       lastCloudSaveTime = Date.now();
       localStorage.setItem('last_cloud_save', String(lastCloudSaveTime));
+    } else if (resp.status === 404 && !retryOnExpire) {
+      // Blob 已过期，自动重建
+      console.warn('云端 blob 已过期，正在重建...');
+      await recreateCloudBlob(payload);
     }
   } catch(e) { console.warn('云端保存失败:', e); }
+}
+
+// 自动重建过期的 jsonblob
+async function recreateCloudBlob(payload) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch('https://jsonblob.com/api/jsonBlob', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if (resp.ok) {
+      const location = resp.headers.get('Location');
+      if (location) {
+        setCloudBlobUrl(location);
+        cloudLastModified = localLastModified;
+        lastCloudSaveTime = Date.now();
+        localStorage.setItem('last_cloud_save', String(lastCloudSaveTime));
+        console.log('云端 blob 重建成功:', location);
+        return true;
+      }
+    }
+    console.warn('云端 blob 重建失败:', resp.status);
+  } catch(e) { console.warn('云端 blob 重建异常:', e); }
+  return false;
 }
 
 async function syncFromCloud() {
@@ -1264,22 +1302,23 @@ async function syncFromCloud() {
   try {
     const cloud = await loadPortfolioFromCloud();
 
-    // Keep-alive: 2小时无条件PUT一次，防止blob过��
-    if (Date.now() - lastCloudSaveTime > 2 * 60 * 60 * 1000) {
+    // Keep-alive: 1小时无条件PUT一次，防止blob过期（jsonblob 24h TTL）
+    if (Date.now() - lastCloudSaveTime > 1 * 60 * 60 * 1000) {
       await savePortfolioToCloud();
     }
 
     if (cloud && cloud.notFound) {
-      // Blob 已过期，静默跳过（需手动重建 blob 并更新 CLOUD_BLOB_URL）
-      console.warn('云端 blob 已过期，跨设备同步暂停');
+      // Blob 已过期，尝试重新上传（savePortfolioToCloud 会自动重建）
+      console.warn('云端 blob 已过期，尝试重建...');
+      await savePortfolioToCloud();
     } else if (cloud && cloud.data && cloud.data.attack) {
       cloudLastModified = cloud.updated_at;
       var cloudTime = new Date(cloud.updated_at).getTime();
       var localTime = localLastModified ? new Date(localLastModified).getTime() : 0;
 
       if (cloudTime > localTime) {
-        // 云端比本地新 → 更新本地
-        portfolio = cloud.data;
+        // 云端比本地新 → 智能合并（保护用户手动添加的数据不被覆盖）
+        portfolio = smartMergeCloud(cloud.data, portfolio);
         localLastModified = cloud.updated_at;
         localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
         localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
@@ -1299,6 +1338,48 @@ async function syncFromCloud() {
     }
   } catch(e) { console.warn('同步失败:', e); }
   isCloudSyncing = false;
+}
+
+// 智能合并：云端数据为基础，但保留本地用户手动添加的完整数据
+function smartMergeCloud(cloudData, localData) {
+  // 以云端数据为基础（通常云端有更新的持仓/价格信息）
+  const merged = JSON.parse(JSON.stringify(cloudData));
+
+  // 保护启明VC数据：如果本地 VC 列表更完整，保留本地
+  if (localData.qimingVC && localData.qimingVC.listed && Array.isArray(localData.qimingVC.listed)) {
+    if (!merged.qimingVC || !merged.qimingVC.listed || !Array.isArray(merged.qimingVC.listed)
+        || localData.qimingVC.listed.length > merged.qimingVC.listed.length) {
+      merged.qimingVC = localData.qimingVC;
+    }
+  }
+
+  // 保护FCN数据：保留本地更完整的FCN数据
+  if (localData.fcnBond && (!merged.fcnBond || Object.keys(localData.fcnBond).length > Object.keys(merged.fcnBond || {}).length)) {
+    merged.fcnBond = localData.fcnBond;
+  }
+
+  // 保护狩猎清单
+  if (localData.huntingList && Array.isArray(localData.huntingList)
+      && (!merged.huntingList || !Array.isArray(merged.huntingList)
+          || localData.huntingList.length > merged.huntingList.length)) {
+    merged.huntingList = localData.huntingList;
+  }
+
+  // 保护watchlist
+  if (localData.watchlist && Array.isArray(localData.watchlist)
+      && (!merged.watchlist || !Array.isArray(merged.watchlist)
+          || localData.watchlist.length > merged.watchlist.length)) {
+    merged.watchlist = localData.watchlist;
+  }
+
+  // 保护防守端用户自定义资产
+  if (localData.defense && localData.defense.userAssets
+      && (!merged.defense || !merged.defense.userAssets
+          || localData.defense.userAssets.length > (merged.defense.userAssets || []).length)) {
+    merged.defense.userAssets = localData.defense.userAssets;
+  }
+
+  return merged;
 }
 
 // ───────── 持仓变更管理 ─────────
