@@ -64,7 +64,7 @@ PE_BLOB_KEEPALIVE = 7200  # 2小时无条件推送一次，防止 blob 过期
 
 # ── 小程序数据 Blob ──
 # 聚合所有实时数据（价格、PE TTM、汇率），小程序直读
-MINIAPP_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fcbb2-cfe7-7bc0-9782-152bd7c5b237"
+MINIAPP_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fcc66-fcfb-7a48-b8da-c84f06641fb3"
 MINIAPP_PUSH_INTERVAL = 30  # 每30秒推送一次
 
 
