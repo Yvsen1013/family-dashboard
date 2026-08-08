@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='40',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='41',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -537,7 +537,6 @@ tr:hover td { background: var(--surface-hover); }
       <div style="display:flex;gap:8px;align-items:center;">
         <span id="riskAnalysisTime" style="font-size:11px;color:var(--text-muted);"></span>
         <button id="riskAnalyzeBtn" class="position-btn" style="background:var(--accent);" onclick="runRiskAnalysis()">开始分析</button>
-        <button class="overlay-close" onclick="closeRiskPanel()">✕</button>
       </div>
     </div>
     <div class="overlay-body" id="riskDetail">
