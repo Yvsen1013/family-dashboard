@@ -662,7 +662,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 16;
+const PORTFOLIO_DATA_VERSION = 17;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1135,8 +1135,32 @@ function loadPortfolioData() {
   if (saved) { try { parsed = JSON.parse(saved); } catch(e) { parsed = null; } }
   if (parsed) {
     if (String(savedVer) !== String(PORTFOLIO_DATA_VERSION)) {
-      // 版本升级：以 EMBEDDED_PORTFOLIO 为基准，只保留用户自主添加的数据
+      // 版本升级：以 EMBEDDED_PORTFOLIO 为基准，但保留用户对已有持仓的修改
       portfolio = JSON.parse(JSON.stringify(EMBEDDED_PORTFOLIO));
+      // 按合并已有持仓：用 symbol 匹配，保留用户的 shares/cost/note/tags/value
+      if (parsed.attack && parsed.attack.assets && portfolio.attack && portfolio.attack.assets) {
+        portfolio.attack.assets.forEach(function(cat, catIdx) {
+          if (!cat.holdings) return;
+          var localCat = parsed.attack.assets[catIdx];
+          if (!localCat || !localCat.holdings) return;
+          // 按 symbol 建索引
+          var localBySymbol = {};
+          localCat.holdings.forEach(function(h) { if (h.symbol) localBySymbol[h.symbol] = h; });
+          cat.holdings.forEach(function(h) {
+            if (h.symbol && localBySymbol[h.symbol]) {
+              var lh = localBySymbol[h.symbol];
+              // 保留用户可修改的字段
+              if (lh.shares !== undefined) h.shares = lh.shares;
+              if (lh.cost !== undefined) h.cost = lh.cost;
+              if (lh.note !== undefined) h.note = lh.note;
+              if (lh.tags !== undefined) h.tags = lh.tags;
+              if (lh.value !== undefined) h.value = lh.value;
+              if (lh.ratio !== undefined) h.ratio = lh.ratio;
+              if (lh.target_pe !== undefined) h.target_pe = lh.target_pe;
+            }
+          });
+        });
+      }
       // 用户自主数据：FCN、启明VC、watchlist、huntingList
       if (parsed.fcnBond) portfolio.fcnBond = parsed.fcnBond;
       if (parsed.qimingVC) portfolio.qimingVC = parsed.qimingVC;
@@ -1347,6 +1371,28 @@ async function syncFromCloud() {
 function smartMergeCloud(cloudData, localData) {
   // 以云端数据为基础（通常云端有更新的持仓/价格信息）
   const merged = JSON.parse(JSON.stringify(cloudData));
+
+  // 保护持仓修改：按 symbol 匹配，保留本地对已有持仓的 shares/cost/note/tags 修改
+  if (localData.attack && localData.attack.assets && merged.attack && merged.attack.assets) {
+    merged.attack.assets.forEach(function(cat, catIdx) {
+      if (!cat.holdings) return;
+      var localCat = localData.attack.assets[catIdx];
+      if (!localCat || !localCat.holdings) return;
+      var localBySymbol = {};
+      localCat.holdings.forEach(function(h) { if (h.symbol) localBySymbol[h.symbol] = h; });
+      cat.holdings.forEach(function(h) {
+        if (h.symbol && localBySymbol[h.symbol]) {
+          var lh = localBySymbol[h.symbol];
+          // 本地修改的持仓参数优先（用户可能调整了股数/成本/备注）
+          if (lh.shares !== undefined) h.shares = lh.shares;
+          if (lh.cost !== undefined) h.cost = lh.cost;
+          if (lh.note !== undefined) h.note = lh.note;
+          if (lh.tags !== undefined) h.tags = lh.tags;
+          if (lh.target_pe !== undefined) h.target_pe = lh.target_pe;
+        }
+      });
+    });
+  }
 
   // 保护启明VC数据：如果本地 VC 列表更完整，保留本地
   if (localData.qimingVC && localData.qimingVC.listed && Array.isArray(localData.qimingVC.listed)) {
