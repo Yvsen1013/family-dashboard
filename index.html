@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='42',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='43',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1196,6 +1196,8 @@ function loadPortfolioData() {
       if (parsed.huntingList) portfolio.huntingList = parsed.huntingList;
       // 防守端 userAssets 保留用户自定义
       if (parsed.defense && parsed.defense.userAssets) portfolio.defense.userAssets = parsed.defense.userAssets;
+      // 风险分析结果保留
+      if (parsed.riskAnalysis) portfolio.riskAnalysis = parsed.riskAnalysis;
       localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
       savePortfolio();
       return;
@@ -1387,6 +1389,17 @@ async function syncFromCloud() {
         // 本地比云端新 → 上传本地
         await savePortfolioToCloud();
       }
+      // 同步风险分析结果
+      if (portfolio.riskAnalysis) {
+        var localRisk = null;
+        try { localRisk = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
+        var cloudRiskTime = portfolio.riskAnalysis.timestamp;
+        var localRiskTime = localRisk ? localRisk.timestamp : null;
+        if (!localRiskTime || cloudRiskTime > localRiskTime) {
+          localStorage.setItem('risk_analysis', JSON.stringify(portfolio.riskAnalysis));
+          updateRiskCard(portfolio.riskAnalysis.analysis.total);
+        }
+      }
     } else {
       // 云端无数据（首次使用或blob过期），上传当前持仓
       await savePortfolioToCloud();
@@ -1433,6 +1446,15 @@ function smartMergeCloud(cloudData, localData) {
       && (!merged.defense || !merged.defense.userAssets
           || localData.defense.userAssets.length > (merged.defense.userAssets || []).length)) {
     merged.defense.userAssets = localData.defense.userAssets;
+  }
+
+  // 风险分析：保留更新的版本
+  if (localData.riskAnalysis && merged.riskAnalysis) {
+    if (localData.riskAnalysis.timestamp > merged.riskAnalysis.timestamp) {
+      merged.riskAnalysis = localData.riskAnalysis;
+    }
+  } else if (localData.riskAnalysis && !merged.riskAnalysis) {
+    merged.riskAnalysis = localData.riskAnalysis;
   }
 
   return merged;
@@ -3206,6 +3228,11 @@ refreshTimer = setInterval(() => loadPrices(), 60000);
 function showRiskPanel() {
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
+  // 本地没有时，尝试从云端同步的 portfolio.riskAnalysis 恢复
+  if (!saved && portfolio.riskAnalysis) {
+    saved = portfolio.riskAnalysis;
+    localStorage.setItem('risk_analysis', JSON.stringify(saved));
+  }
   if (saved && saved.report) {
     renderRiskReport(saved);
     document.getElementById('riskAnalysisTime').textContent = '分析于 ' + saved.timestamp;
@@ -3230,6 +3257,9 @@ function runRiskAnalysis() {
       var report = buildRiskReport(analysis);
       var data = { timestamp: new Date().toLocaleString('zh-CN'), analysis: analysis, report: report };
       localStorage.setItem('risk_analysis', JSON.stringify(data));
+      // 同步到云端
+      portfolio.riskAnalysis = data;
+      savePortfolioToCloud();
       renderRiskReport(data);
       document.getElementById('riskAnalysisTime').textContent = '分析于 ' + data.timestamp;
       updateRiskCard(analysis.total);
@@ -3639,6 +3669,10 @@ function renderRiskReport(data) {
 (function() {
   try {
     var saved = JSON.parse(localStorage.getItem('risk_analysis'));
+    if (!saved && portfolio.riskAnalysis) {
+      saved = portfolio.riskAnalysis;
+      localStorage.setItem('risk_analysis', JSON.stringify(saved));
+    }
     if (saved && saved.analysis && saved.analysis.total != null) {
       updateRiskCard(saved.analysis.total);
     }
