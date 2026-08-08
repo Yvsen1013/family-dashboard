@@ -1240,7 +1240,7 @@ function savePortfolio() {
 // ───────── 云端同步（JSONBlob，零配置） ─────────
 // 无需注册、无需API Key，自动跨设备同步
 // 数据存储在 jsonblob.com，CORS全开，24h无写入自动过期，代码内置keep-alive防过期
-const DEFAULT_CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fdbe6-c395-7e75-a31b-ab941e797d98';
+const DEFAULT_CLOUD_BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019fe1ca-0fd8-7a5c-80dc-2bf2baf2396f';
 function getCloudBlobUrl() { return localStorage.getItem('cloud_blob_url') || DEFAULT_CLOUD_BLOB_URL; }
 function setCloudBlobUrl(url) { localStorage.setItem('cloud_blob_url', url); }
 let cloudLastModified = null;
