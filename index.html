@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='47',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='48',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -704,7 +704,9 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 24;
+const PORTFOLIO_DATA_VERSION = 25;
+// 云端 blob URL 版本：递增后强制所有设备清除 localStorage 中的旧 blob URL，统一使用 DEFAULT_CLOUD_BLOB_URL
+const CLOUD_BLOB_URL_VERSION = '2';
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1156,6 +1158,11 @@ function deepMergeDefaults(def, saved) {
 
 function loadPortfolioData() {
   loadDynamicQtMap();
+  // 强制所有设备使用 DEFAULT_CLOUD_BLOB_URL（清除自动重建时存的旧 URL，防止设备间用不同 blob）
+  if (localStorage.getItem('cloud_blob_url_ver') !== CLOUD_BLOB_URL_VERSION) {
+    localStorage.removeItem('cloud_blob_url');
+    localStorage.setItem('cloud_blob_url_ver', CLOUD_BLOB_URL_VERSION);
+  }
   const saved = localStorage.getItem('family_portfolio');
   const savedVer = localStorage.getItem('family_portfolio_ver');
   localLastModified = localStorage.getItem('portfolio_local_modified') || null;
