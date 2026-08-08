@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='51',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='52',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -704,7 +704,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 28;
+const PORTFOLIO_DATA_VERSION = 29;
 // 云端 blob URL 版本：递增后强制所有设备清除 localStorage 中的旧 blob URL，统一使用 DEFAULT_CLOUD_BLOB_URL
 const CLOUD_BLOB_URL_VERSION = '2';
 const EMBEDDED_PORTFOLIO = {
@@ -1397,17 +1397,44 @@ async function syncFromCloud() {
     var cloudTime = new Date(cloud.updated_at).getTime();
     var localTime = localLastModified ? new Date(localLastModified).getTime() : 0;
 
+    // ★ 先做独立 riskAnalysis 同步（在 smartMergeCloud 和主推送之前）
+    //   确保 portfolio.riskAnalysis 已设好，再进入合并和推送流程
+    var _cloudRisk = cloud.data.riskAnalysis;
+    var _localRisk = null;
+    try { _localRisk = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
+    var _portRisk = portfolio.riskAnalysis;
+    var _cTs = _cloudRisk ? (_cloudRisk.ts || 0) : 0;
+    var _lTs = _localRisk ? (_localRisk.ts || 0) : 0;
+    var _pTs = _portRisk ? (_portRisk.ts || 0) : 0;
+    var _maxRiskTs = Math.max(_cTs, _lTs, _pTs);
+    var _riskChanged = false;
+    if (_maxRiskTs > 0) {
+      var _bestRisk = null;
+      if (_cTs === _maxRiskTs) _bestRisk = _cloudRisk;
+      else if (_lTs === _maxRiskTs) _bestRisk = _localRisk;
+      else _bestRisk = _portRisk;
+      if (_bestRisk) {
+        if (_pTs < _maxRiskTs) { portfolio.riskAnalysis = _bestRisk; _riskChanged = true; }
+        if (_lTs < _maxRiskTs) { localStorage.setItem('risk_analysis', JSON.stringify(_bestRisk)); updateRiskCard(_bestRisk.analysis.total); _riskChanged = true; }
+      }
+    }
+
     // ★ 总是做智能合并（不管谁新谁旧，按 _userDataTs 取各模块最新版本）
     var _uf = ['qimingVC', 'fcnBond', 'huntingList', 'defense', 'watchlist', 'riskAnalysis'];
     var _before = {};
     _uf.forEach(function(f) { _before[f] = JSON.stringify(portfolio[f]); });
 
     portfolio = smartMergeCloud(cloud.data, portfolio);
+    // smartMergeCloud 后再确保 riskAnalysis 不丢
+    if (_bestRisk && (!portfolio.riskAnalysis || (portfolio.riskAnalysis.ts || 0) < _maxRiskTs)) {
+      portfolio.riskAnalysis = _bestRisk;
+    }
 
     var _changed = false;
     _uf.forEach(function(f) {
       if (_before[f] !== JSON.stringify(portfolio[f])) _changed = true;
     });
+    if (_riskChanged) _changed = true;
 
     if (_changed) {
       localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
@@ -1421,37 +1448,12 @@ async function syncFromCloud() {
       localStorage.setItem('portfolio_local_modified', localLastModified);
     }
 
-    // 推送：本地比云端新，或合并后有变化
-    if (localTime > cloudTime || _changed) {
-      // 版本升级后 _userDataTs = 1，推送前更新为当前时间
+    // 推送：本地比云端新，或合并后有变化，或云端缺 riskAnalysis 但本地有
+    var _cloudNeedsRisk = (_maxRiskTs > 0 && _cTs < _maxRiskTs);
+    if (localTime > cloudTime || _changed || _cloudNeedsRisk) {
       if (portfolio._userDataTs <= 1) portfolio._userDataTs = Date.now();
       localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
       await savePortfolioToCloud();
-    }
-
-    // ★ 独立同步风险分析结果（不受 portfolio 时间戳比较影响）
-    var _cloudRisk = cloud.data.riskAnalysis;
-    var _localRisk = null;
-    try { _localRisk = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
-    var _portRisk = portfolio.riskAnalysis;
-    var _cTs = _cloudRisk ? (_cloudRisk.ts || 0) : 0;
-    var _lTs = _localRisk ? (_localRisk.ts || 0) : 0;
-    var _pTs = _portRisk ? (_portRisk.ts || 0) : 0;
-    var _maxTs = Math.max(_cTs, _lTs, _pTs);
-    if (_maxTs > 0) {
-      var _best = null;
-      if (_cTs === _maxTs) _best = _cloudRisk;
-      else if (_lTs === _maxTs) _best = _localRisk;
-      else _best = _portRisk;
-      if (_best) {
-        if (_pTs < _maxTs) { portfolio.riskAnalysis = _best; localStorage.setItem('family_portfolio', JSON.stringify(portfolio)); updateRiskCard(_best.analysis.total); }
-        if (_lTs < _maxTs) { localStorage.setItem('risk_analysis', JSON.stringify(_best)); updateRiskCard(_best.analysis.total); }
-        if (_cTs < _maxTs) {
-          localLastModified = new Date().toISOString();
-          localStorage.setItem('portfolio_local_modified', localLastModified);
-          await savePortfolioToCloud();
-        }
-      }
     }
 
     // Keep-alive: 1小时无条件PUT一次，防止blob过期
@@ -3343,16 +3345,18 @@ function runRiskAnalysis() {
   var btn = document.getElementById('riskAnalyzeBtn');
   btn.textContent = '分析中...';
   btn.disabled = true;
-  setTimeout(function() {
+  setTimeout(async function() {
     try {
       var analysis = computeRiskScore();
       var report = buildRiskReport(analysis);
       var now = new Date();
       var data = { timestamp: now.toLocaleString('zh-CN'), ts: now.getTime(), analysis: analysis, report: report };
       localStorage.setItem('risk_analysis', JSON.stringify(data));
-      // 同步到本地 + 云端（savePortfolio 同时更新 localStorage 和 jsonblob）
+      // 同步到本地 + 云端
       portfolio.riskAnalysis = data;
-      savePortfolio();
+      savePortfolio(); // 存 localStorage + 触发云端推送（fire-and-forget）
+      // ★ 显式再推一次云端，确保 riskAnalysis 到达 jsonblob
+      await savePortfolioToCloud();
       renderRiskReport(data);
       document.getElementById('riskAnalysisTime').textContent = '分析于 ' + data.timestamp;
       updateRiskCard(analysis.total);
