@@ -1214,7 +1214,7 @@ async function savePortfolioToCloud(retryOnExpire) {
   try {
     if (!localLastModified) localLastModified = new Date().toISOString();
 
-    // 计算月初总资产基准（供小程序显示"本月收益"）
+    // 计算月初总资产基准
     let monthStartTotal = null;
     try {
       const snaps = getSnapshots();
@@ -1231,7 +1231,7 @@ async function savePortfolioToCloud(retryOnExpire) {
       }
     } catch(e) { /* 无快照时忽略 */ }
 
-    // 用实时计算值更新 portfolio 中的静态总计（避免小程序读到过期数据）
+    // 用实时计算值更新 portfolio 中的静态总计
     const rtTotal = computeTotalAssets();
     const rtAttack = computeAttackTotal();
     const rtDefense = computeDefenseDynamic();
@@ -1239,7 +1239,7 @@ async function savePortfolioToCloud(retryOnExpire) {
     if (portfolio.attack) portfolio.attack.total = rtAttack;
     if (portfolio.defense) portfolio.defense.total = rtDefense;
 
-    // 扁平化：小程序要求 attack/defense 等字段在顶层，同时保留向后兼容
+    // 扁平化数据结构，保留向后兼容
     const payload = Object.assign({}, portfolio, {
       _lastModified: localLastModified,
       _month_start_total: monthStartTotal
