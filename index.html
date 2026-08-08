@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='48',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='49',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -704,7 +704,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 25;
+const PORTFOLIO_DATA_VERSION = 26;
 // 云端 blob URL 版本：递增后强制所有设备清除 localStorage 中的旧 blob URL，统一使用 DEFAULT_CLOUD_BLOB_URL
 const CLOUD_BLOB_URL_VERSION = '2';
 const EMBEDDED_PORTFOLIO = {
@@ -1199,6 +1199,10 @@ function loadPortfolioData() {
       if (parsed.defense && parsed.defense.userAssets) portfolio.defense.userAssets = parsed.defense.userAssets;
       // 风险分析结果保留
       if (parsed.riskAnalysis) portfolio.riskAnalysis = parsed.riskAnalysis;
+      // 兼容旧版：risk_analysis 可能只存在 localStorage('risk_analysis') 而未写入 family_portfolio
+      if (!portfolio.riskAnalysis) {
+        try { var ra = JSON.parse(localStorage.getItem('risk_analysis')); if (ra) portfolio.riskAnalysis = ra; } catch(e) {}
+      }
       localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
       savePortfolio();
       return;
@@ -1216,6 +1220,10 @@ function loadPortfolioData() {
   }
   // 向后兼容：旧数据可能没有 qimingVC
   if (!portfolio.qimingVC) portfolio.qimingVC = { listed: [] };
+  // 兼容旧版：risk_analysis 可能只存在 localStorage('risk_analysis') 而未写入 family_portfolio
+  if (!portfolio.riskAnalysis) {
+    try { var ra = JSON.parse(localStorage.getItem('risk_analysis')); if (ra) portfolio.riskAnalysis = ra; } catch(e) {}
+  }
 }
 
 function renderAllPortfolio() {
