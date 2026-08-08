@@ -1439,6 +1439,12 @@ async function syncFromCloud() {
         if (_best) {
           if (_pTs < _maxTs) { portfolio.riskAnalysis = _best; localStorage.setItem('family_portfolio', JSON.stringify(portfolio)); }
           if (_lTs < _maxTs) { localStorage.setItem('risk_analysis', JSON.stringify(_best)); updateRiskCard(_best.analysis.total); }
+          // ★ 本地有更新的 riskAnalysis 但云端没有（或更旧）→ 立即推送到云端
+          if (_cTs < _maxTs) {
+            localLastModified = new Date().toISOString();
+            localStorage.setItem('portfolio_local_modified', localLastModified);
+            await savePortfolioToCloud();
+          }
         }
       }
     } else {
