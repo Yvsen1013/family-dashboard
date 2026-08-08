@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='43',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='44',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -704,7 +704,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 20;
+const PORTFOLIO_DATA_VERSION = 21;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1203,6 +1203,13 @@ function loadPortfolioData() {
       return;
     }
     portfolio = deepMergeDefaults(EMBEDDED_PORTFOLIO, parsed);
+    // holdings 始终以 EMBEDDED_PORTFOLIO 为准（防止旧 localStorage 覆盖最新持仓）
+    if (portfolio.attack && portfolio.attack.assets && EMBEDDED_PORTFOLIO.attack && EMBEDDED_PORTFOLIO.attack.assets) {
+      portfolio.attack.assets.forEach(function(cat, i) {
+        var defCat = EMBEDDED_PORTFOLIO.attack.assets[i];
+        if (defCat && defCat.holdings) cat.holdings = JSON.parse(JSON.stringify(defCat.holdings));
+      });
+    }
   } else {
     portfolio = EMBEDDED_PORTFOLIO;
   }
@@ -1408,10 +1415,20 @@ async function syncFromCloud() {
   isCloudSyncing = false;
 }
 
-// 智能合并：云端数据为基础，但保留本地用户手动添加的完整数据
+// 智能合并：云端数据为基础，但持仓数据始终以 EMBEDDED_PORTFOLIO 为准
 function smartMergeCloud(cloudData, localData) {
-  // 以云端数据为基础（云端是其他设备推送的最新数据，持仓 shares/cost 以云端为准）
+  // 以云端数据为基础（用于同步用户自主数据：VC、FCN、watchlist等）
   const merged = JSON.parse(JSON.stringify(cloudData));
+
+  // ★ 持仓数据（holdings）始终以 EMBEDDED_PORTFOLIO 为准，不被云端旧数据覆盖
+  if (EMBEDDED_PORTFOLIO.attack && EMBEDDED_PORTFOLIO.attack.assets && merged.attack && merged.attack.assets) {
+    merged.attack.assets.forEach(function(cat, i) {
+      var defCat = EMBEDDED_PORTFOLIO.attack.assets[i];
+      if (defCat && defCat.holdings) {
+        cat.holdings = JSON.parse(JSON.stringify(defCat.holdings));
+      }
+    });
+  }
 
   // 保护启明VC数据：如果本地 VC 列表更完整，保留本地
   if (localData.qimingVC && localData.qimingVC.listed && Array.isArray(localData.qimingVC.listed)) {
@@ -1439,7 +1456,29 @@ function smartMergeCloud(cloudData, localData) {
           || localData.watchlist.length > merged.watchlist.length)) {
     merged.watchlist = localData.watchlist;
   }
-  // 嵌套 watchlist：云端更新时不覆盖——云端数据来自其他设备，是权威版本
+  // 嵌套 watchlist：以 EMBEDDED_PORTFOLIO 为基准，合并云端和本地用户新增的条目
+  if (EMBEDDED_PORTFOLIO.attack && EMBEDDED_PORTFOLIO.attack.assets && merged.attack && merged.attack.assets) {
+    merged.attack.assets.forEach(function(cat, i) {
+      var defCat = EMBEDDED_PORTFOLIO.attack.assets[i];
+      if (!defCat || !defCat.watchlist) return;
+      if (!cat.watchlist) cat.watchlist = [];
+      // 以默认数据为基准
+      var baseWatchlist = JSON.parse(JSON.stringify(defCat.watchlist));
+      var defaultNames = {};
+      baseWatchlist.forEach(function(w) { if (w.name) defaultNames[w.name] = true; });
+      // 合并云端中用户新增的（不在默认数据里的）
+      cat.watchlist.forEach(function(w) {
+        if (w.name && !defaultNames[w.name]) { baseWatchlist.push(w); defaultNames[w.name] = true; }
+      });
+      // 合并本地中用户新增的
+      if (localData.attack && localData.attack.assets && localData.attack.assets[i] && localData.attack.assets[i].watchlist) {
+        localData.attack.assets[i].watchlist.forEach(function(w) {
+          if (w.name && !defaultNames[w.name]) { baseWatchlist.push(w); defaultNames[w.name] = true; }
+        });
+      }
+      cat.watchlist = baseWatchlist;
+    });
+  }
 
   // 保护防守端用户自定义资产
   if (localData.defense && localData.defense.userAssets
