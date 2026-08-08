@@ -521,6 +521,9 @@ tr:hover td { background: var(--surface-hover); }
   </div>
 </div>
 
+<!-- Toast 通知 -->
+<div id="toastBox" style="position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);z-index:9999;padding:14px 24px;background:var(--surface);border:2px solid var(--border);border-radius:8px;box-shadow:2px 2px 0 var(--border);font-size:14px;font-weight:600;color:var(--text);transition:transform 0.3s ease;max-width:90vw;text-align:center;"></div>
+
 <!-- 新增FCN弹窗 -->
 <div id="fcnOverlay" class="overlay" style="display:none;">
   <div class="overlay-card" style="max-width:560px;">
@@ -1642,6 +1645,17 @@ function closePositionManager() {
 
 // ───────── FCN 管理 ─────────
 
+// Toast 通知
+function showToast(msg, duration) {
+  const box = document.getElementById('toastBox');
+  if (!box) return;
+  box.textContent = msg;
+  box.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    box.style.transform = 'translateX(-50%) translateY(-100px)';
+  }, duration || 3000);
+}
+
 let fcnSearchTimer = null;
 
 async function doFcnSearch(keyword) {
@@ -2597,20 +2611,82 @@ function renderFCN(p) {
   }
 }
 
-// FCN 到期处理：确认后删除并重编号
+// FCN 到期处理：将面额转入"货币基金-妈"，删除合约并重编号
 function handleFcnExpire(index) {
-  if (!confirm('确认该产品已到期')) return;
   const fcnGroup = portfolio.attack.assets[2];
   if (!fcnGroup || !fcnGroup.fcn_contracts) return;
+  const contract = fcnGroup.fcn_contracts[index];
+  if (!contract) return;
+  if (!confirm('确认 FCN ' + contract.id + ' · ' + contract.underlying + ' 已到期？\n面额 ¥' + formatCN(contract.value) + ' 将转入"货币基金 - 妈"')) return;
+
+  // 面额转入"货币基金 - 妈"
+  transferFcnToMom(contract.value, contract.id + ' · ' + contract.underlying + ' 到期');
+
   fcnGroup.fcn_contracts.splice(index, 1);
-  // 重编号：一号、二号、三号...
+  renumberFcnContracts(fcnGroup);
+  savePortfolio();
+  loadPortfolio();
+}
+
+// FCN 自动到期检查：启动时调用，到期合约自动转账并删除
+function autoExpireFCN() {
+  const fcnGroup = portfolio.attack && portfolio.attack.assets && portfolio.attack.assets[2];
+  if (!fcnGroup || !fcnGroup.fcn_contracts || fcnGroup.fcn_contracts.length === 0) return;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const expired = [];
+
+  for (let i = fcnGroup.fcn_contracts.length - 1; i >= 0; i--) {
+    const c = fcnGroup.fcn_contracts[i];
+    const expiry = new Date(c.expiry + 'T00:00:00');
+    if (expiry <= now) {
+      expired.push(c);
+      fcnGroup.fcn_contracts.splice(i, 1);
+    }
+  }
+
+  if (expired.length === 0) return;
+
+  // 逐笔将面额转入"货币基金 - 妈"
+  let totalTransfer = 0;
+  expired.forEach(c => {
+    transferFcnToMom(c.value, c.id + ' · ' + c.underlying + ' 自动到期');
+    totalTransfer += c.value;
+  });
+
+  renumberFcnContracts(fcnGroup);
+  savePortfolio();
+
+  // 提示用户
+  const names = expired.map(c => c.id + '·' + c.underlying).join('、');
+  showToast('FCN ' + names + ' 已到期，面额 ¥' + formatCN(totalTransfer) + ' 已转入"货币基金 - 妈"', 6000);
+}
+
+// 将金额加到"货币基金 - 妈"
+function transferFcnToMom(amount, note) {
+  if (!portfolio.defense || !portfolio.defense.assets) return;
+  const mom = portfolio.defense.assets.find(a => a.name && a.name.includes('货币基金') && a.name.includes('妈'));
+  if (mom) {
+    mom.value = (mom.value || 0) + amount;
+  } else {
+    // 如果不存在，创建一条
+    portfolio.defense.assets.push({
+      name: '货币基金 - 妈',
+      value: amount,
+      ratio: 0,
+      type: '现金'
+    });
+  }
+}
+
+// FCN 合约重编号
+function renumberFcnContracts(fcnGroup) {
   const chineseNums = ['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五'];
   fcnGroup.fcn_contracts.forEach((c, i) => {
     c.id = (i < chineseNums.length ? chineseNums[i] : String(i + 1)) + '号';
   });
   fcnGroup.total_value = fcnGroup.fcn_contracts.reduce((s, c) => s + c.value, 0);
-  savePortfolio();
-  loadPortfolio();
 }
 
 function renderWatchlist(p) {
@@ -3053,15 +3129,17 @@ fetchFX().then(async () => {
   loadPortfolioData();
   // Step 2: 等待云端同步完成（云端更新 → 写 localStorage + 更新 portfolio 并自动渲染）
   await syncFromCloud();
-  // Step 3: 云端数据就绪后，一次性渲染（若云端无变化，此处补渲染）
+  // Step 3: FCN 自动到期检查（到期合约面额转入"货币基金-妈"）
+  autoExpireFCN();
+  // Step 4: 云端数据就绪后，一次性渲染（若云端无变化，此处补渲染）
   renderAllPortfolio();
-  // Step 4: 拉取股价
+  // Step 5: 拉取股价
   loadPrices();
-  // Step 5: 设置定时同步（每30秒）
+  // Step 6: 设置定时同步（每30秒）
   setInterval(syncFromCloud, 30000);
-  // Step 6: 拉取历史收益快照（不阻塞）
+  // Step 7: 拉取历史收益快照（不阻塞）
   loadRemoteSnapshots();
-  // Step 7: 同步完成后刷新行情并记快照
+  // Step 8: 同步完成后刷新行情并记快照
   loadPrices(true).then(() => {
     recordSnapshot();
   });
