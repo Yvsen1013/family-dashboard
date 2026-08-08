@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='45',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='46',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -704,7 +704,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 22;
+const PORTFOLIO_DATA_VERSION = 23;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -795,6 +795,14 @@ const EMBEDDED_PORTFOLIO = {
             "target_pe": "40-60",
             "target_price": null,
             "note": "短期"
+          },
+          {
+            "name": "寒武纪",
+            "symbol": "688256.SS",
+            "market": "CN",
+            "target_pe": "60-100",
+            "target_price": null,
+            "note": ""
           }
         ]
       },
