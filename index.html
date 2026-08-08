@@ -662,7 +662,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 17;
+const PORTFOLIO_DATA_VERSION = 18;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -765,14 +765,6 @@ const EMBEDDED_PORTFOLIO = {
             "symbol": "300602.SZ",
             "market": "CN",
             "target_pe": "40-60",
-            "target_price": null,
-            "note": "短期"
-          },
-          {
-            "name": "东山精密",
-            "symbol": "002384.SZ",
-            "market": "CN",
-            "target_pe": "40-80",
             "target_price": null,
             "note": "短期"
           }
@@ -1161,6 +1153,15 @@ function loadPortfolioData() {
           });
         });
       }
+      // 保护嵌套 watchlist：attack.assets[].watchlist 是用户可增删的，用本地数据覆盖
+      if (parsed.attack && parsed.attack.assets && portfolio.attack && portfolio.attack.assets) {
+        portfolio.attack.assets.forEach(function(cat, catIdx) {
+          var localCat = parsed.attack.assets[catIdx];
+          if (localCat && localCat.watchlist) {
+            cat.watchlist = localCat.watchlist;
+          }
+        });
+      }
       // 用户自主数据：FCN、启明VC、watchlist、huntingList
       if (parsed.fcnBond) portfolio.fcnBond = parsed.fcnBond;
       if (parsed.qimingVC) portfolio.qimingVC = parsed.qimingVC;
@@ -1414,11 +1415,20 @@ function smartMergeCloud(cloudData, localData) {
     merged.huntingList = localData.huntingList;
   }
 
-  // 保护watchlist
+  // 保护watchlist（顶层 + 嵌套在 attack.assets[].watchlist）
   if (localData.watchlist && Array.isArray(localData.watchlist)
       && (!merged.watchlist || !Array.isArray(merged.watchlist)
           || localData.watchlist.length > merged.watchlist.length)) {
     merged.watchlist = localData.watchlist;
+  }
+  // 嵌套 watchlist：用户可增删狩猎清单条目，用本地数据覆盖
+  if (localData.attack && localData.attack.assets && merged.attack && merged.attack.assets) {
+    merged.attack.assets.forEach(function(cat, catIdx) {
+      var localCat = localData.attack.assets[catIdx];
+      if (localCat && localCat.watchlist) {
+        cat.watchlist = localCat.watchlist;
+      }
+    });
   }
 
   // 保护防守端用户自定义资产
