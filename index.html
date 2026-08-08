@@ -1204,9 +1204,11 @@ function loadPortfolioData() {
         try { var ra = JSON.parse(localStorage.getItem('risk_analysis')); if (ra) portfolio.riskAnalysis = ra; } catch(e) {}
       }
       localStorage.setItem('family_portfolio_ver', String(PORTFOLIO_DATA_VERSION));
+      // ★ 设 _userDataTs = 1（很小的值），让 syncFromCloud 能判断方向：
+      //   云端 _userDataTs > 1 → 云端有新数据，以云端为基础
+      //   云端 _userDataTs = 0 → 云端没有 _userDataTs，以本地为基础并推送
+      portfolio._userDataTs = 1;
       localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
-      // ★ 版本升级时不推云端，让 syncFromCloud 从云端合并最新数据（含风险分析、启明VC等）
-      // 否则 savePortfolio() 会把本地旧数据（可能没有 riskAnalysis）推到云端，覆盖其他设备的数据
       localLastModified = null;
       localStorage.removeItem('portfolio_local_modified');
       return;
@@ -1421,6 +1423,9 @@ async function syncFromCloud() {
 
     // 推送：本地比云端新，或合并后有变化
     if (localTime > cloudTime || _changed) {
+      // 版本升级后 _userDataTs = 1，推送前更新为当前时间
+      if (portfolio._userDataTs <= 1) portfolio._userDataTs = Date.now();
+      localStorage.setItem('family_portfolio', JSON.stringify(portfolio));
       await savePortfolioToCloud();
     }
 
@@ -1493,6 +1498,35 @@ function smartMergeCloud(cloudData, localData) {
       });
       cat.watchlist = baseWatchlist;
     });
+  }
+
+  // ★ 版本升级兼容：当一方 _userDataTs <= 1（刚版本升级，旧数据无时间戳），
+  //   对用户自主数据做字段级保护——保留条目更多的那个（防止另一端的旧数据覆盖）
+  if (cloudTs <= 1 || localTs <= 1) {
+    // qimingVC
+    if (localData.qimingVC && localData.qimingVC.listed && Array.isArray(localData.qimingVC.listed)) {
+      var mL = (merged.qimingVC && merged.qimingVC.listed) ? merged.qimingVC.listed.length : 0;
+      if (localData.qimingVC.listed.length > mL) {
+        merged.qimingVC = localData.qimingVC;
+      }
+    }
+    // fcnBond
+    if (localData.fcnBond && (!merged.fcnBond || Object.keys(localData.fcnBond).length > Object.keys(merged.fcnBond || {}).length)) {
+      merged.fcnBond = localData.fcnBond;
+    }
+    // huntingList
+    if (localData.huntingList && Array.isArray(localData.huntingList)
+        && (!merged.huntingList || !Array.isArray(merged.huntingList)
+            || localData.huntingList.length > merged.huntingList.length)) {
+      merged.huntingList = localData.huntingList;
+    }
+    // defense.userAssets
+    if (localData.defense && localData.defense.userAssets
+        && (!merged.defense || !merged.defense.userAssets
+            || localData.defense.userAssets.length > (merged.defense.userAssets || []).length)) {
+      if (!merged.defense) merged.defense = {};
+      merged.defense.userAssets = localData.defense.userAssets;
+    }
   }
 
   // riskAnalysis：按 ts 取最新版本（独立于 _userDataTs）
