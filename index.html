@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='39',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='40',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -3290,10 +3290,11 @@ function runRiskAnalysis() {
 }
 
 function riskLevel(score) {
-  if (score <= 25) return { label: '低风险', color: '#2e8b46', bg: 'rgba(46,139,70,0.12)', tag: 'risk-tag-low' };
-  if (score <= 45) return { label: '中低风险', color: '#639922', bg: 'rgba(99,153,34,0.12)', tag: 'risk-tag-low' };
-  if (score <= 65) return { label: '中等风险', color: '#d9a13b', bg: 'rgba(217,161,59,0.12)', tag: 'risk-tag-mid' };
-  if (score <= 80) return { label: '中高风险', color: '#cf4b3c', bg: 'rgba(207,75,60,0.12)', tag: 'risk-tag-high' };
+  // 分数越高 = 风险越低（越安全）
+  if (score >= 81) return { label: '低风险', color: '#2e8b46', bg: 'rgba(46,139,70,0.12)', tag: 'risk-tag-low' };
+  if (score >= 66) return { label: '中低风险', color: '#639922', bg: 'rgba(99,153,34,0.12)', tag: 'risk-tag-low' };
+  if (score >= 46) return { label: '中等风险', color: '#d9a13b', bg: 'rgba(217,161,59,0.12)', tag: 'risk-tag-mid' };
+  if (score >= 26) return { label: '中高风险', color: '#cf4b3c', bg: 'rgba(207,75,60,0.12)', tag: 'risk-tag-high' };
   return { label: '高风险', color: '#cf4b3c', bg: 'rgba(207,75,60,0.18)', tag: 'risk-tag-high' };
 }
 
@@ -3521,6 +3522,14 @@ function computeRiskScore() {
   lossScore = Math.min(lossScore, 100);
 
   // 加权总分
+  // 反转：分数越高 = 风险越低（越安全）
+  concScore = 100 - concScore;
+  fcnScore = 100 - fcnScore;
+  valScore = 100 - valScore;
+  liqScore = 100 - liqScore;
+  fxScore = 100 - fxScore;
+  lossScore = 100 - lossScore;
+
   var total = Math.round(
     concScore * 0.20 + fcnScore * 0.15 + valScore * 0.15 +
     liqScore * 0.15 + fxScore * 0.10 + lossScore * 0.25
