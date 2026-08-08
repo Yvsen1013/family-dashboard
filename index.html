@@ -2714,10 +2714,6 @@ function autoExpireFCN() {
 
   renumberFcnContracts(fcnGroup);
   savePortfolio();
-
-  // 提示用户
-  const names = expired.map(c => c.id + '·' + c.underlying).join('、');
-  showToast('FCN ' + names + ' 已到期，面额 ¥' + formatCN(totalTransfer) + ' 已转入"货币基金 - 妈"', 6000);
 }
 
 // 将金额加到"货币基金 - 妈"
