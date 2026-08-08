@@ -62,11 +62,6 @@ PE_TTM_CACHE_TTL = 300  # 5分钟
 PE_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fc5c4-5bb0-7954-ab27-a1e2cc460269"
 PE_BLOB_KEEPALIVE = 7200  # 2小时无条件推送一次，防止 blob 过期
 
-# ── 小程序数据 Blob ──
-# 聚合所有实时数据（价格、PE TTM、汇率），小程序直读
-MINIAPP_BLOB_URL = "https://jsonblob.com/api/jsonBlob/019fcc66-fcfb-7a48-b8da-c84f06641fb3"
-MINIAPP_PUSH_INTERVAL = 30  # 每30秒推送一次
-
 
 def _read_neodata_token():
     """读取 neodata API token，检查是否过期（>12小时）"""
@@ -406,31 +401,6 @@ def fetch_exchange_rates():
     return fx_cache
 
 
-# ── 小程序数据推送 ──
-def push_miniapp_data():
-    """每30秒将实时数据推送到小程序专属 blob"""
-    while True:
-        time.sleep(MINIAPP_PUSH_INTERVAL)
-        try:
-            prices = get_prices()
-            fx = fetch_exchange_rates()
-            with pe_ttm_lock:
-                pe_data = dict(pe_ttm_cache)
-
-            payload = json.dumps({
-                "prices": prices,
-                "pe_ttm": pe_data,
-                "fx": fx,
-                "updated_at": int(time.time())
-            }).encode()
-
-            req = urllib.request.Request(MINIAPP_BLOB_URL, data=payload, method="PUT",
-                headers={"Content-Type": "application/json", "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                print(f"[MiniApp] 推送成功: {len(prices)}只股票, PE={len(pe_data)}, fx={fx}")
-        except Exception as e:
-            print(f"[MiniApp] 推送失败: {e}")
-
 # ────────────────── 持仓数据 ──────────────────
 PORTFOLIO = {
     "total_assets": 12180606,
@@ -757,9 +727,6 @@ def run_server():
     print(f"🚀 投资仪表盘已启动 → http://127.0.0.1:{PORT}")
     # 启动 PE 数据 keepalive 线程（每2小时推送到 jsonblob 防止过期）
     threading.Thread(target=push_pe_keepalive, daemon=True).start()
-    # 启动小程序数据推送线程（每30秒推送价格+PE+汇率到专属 blob）
-    threading.Thread(target=push_miniapp_data, daemon=True).start()
-    print(f"📱 小程序数据推送已启动 → 每{MINIAPP_PUSH_INTERVAL}秒推送")
     server.serve_forever()
 
 
