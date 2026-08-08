@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='46',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='47',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1359,11 +1359,7 @@ async function syncFromCloud() {
   isCloudSyncing = true;
   try {
     const cloud = await loadPortfolioFromCloud();
-
-    // Keep-alive: 1小时无条件PUT一次，防止blob过期（jsonblob 24h TTL）
-    if (Date.now() - lastCloudSaveTime > 1 * 60 * 60 * 1000) {
-      await savePortfolioToCloud();
-    }
+    var didMerge = false;
 
     if (cloud && cloud.notFound) {
       // Blob 已过期，尝试重新上传（savePortfolioToCloud 会自动重建）
@@ -1386,23 +1382,30 @@ async function syncFromCloud() {
         renderFCN(portfolio);
         renderWatchlist(portfolio);
         renderQimingVC();
+        didMerge = true;
       } else if (localTime > cloudTime) {
         // 本地比云端新 → 上传本地
         await savePortfolioToCloud();
       }
-      // 同步风险分析结果
+      // 同步风险分析结果（用数值时间戳比较）
       if (portfolio.riskAnalysis) {
         var localRisk = null;
         try { localRisk = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
-        var cloudRiskTime = portfolio.riskAnalysis.timestamp;
-        var localRiskTime = localRisk ? localRisk.timestamp : null;
-        if (!localRiskTime || cloudRiskTime > localRiskTime) {
+        var cloudRiskTs = portfolio.riskAnalysis.ts || 0;
+        var localRiskTs = localRisk ? (localRisk.ts || 0) : 0;
+        if (cloudRiskTs > localRiskTs) {
           localStorage.setItem('risk_analysis', JSON.stringify(portfolio.riskAnalysis));
           updateRiskCard(portfolio.riskAnalysis.analysis.total);
         }
       }
     } else {
       // 云端无数据（首次使用或blob过期），上传当前持仓
+      await savePortfolioToCloud();
+    }
+
+    // Keep-alive: 1小时无条件PUT一次，防止blob过期（jsonblob 24h TTL）
+    // 放在合并之后：确保推送的是合并后的最新数据（含云端 riskAnalysis）
+    if (Date.now() - lastCloudSaveTime > 1 * 60 * 60 * 1000) {
       await savePortfolioToCloud();
     }
   } catch(e) { console.warn('同步失败:', e); }
@@ -1481,9 +1484,11 @@ function smartMergeCloud(cloudData, localData) {
     merged.defense.userAssets = localData.defense.userAssets;
   }
 
-  // 风险分析：保留更新的版本
+  // 风险分析：保留更新的版本（用数值时间戳比较）
   if (localData.riskAnalysis && merged.riskAnalysis) {
-    if (localData.riskAnalysis.timestamp > merged.riskAnalysis.timestamp) {
+    var localTs = localData.riskAnalysis.ts || 0;
+    var cloudTs = merged.riskAnalysis.ts || 0;
+    if (localTs > cloudTs) {
       merged.riskAnalysis = localData.riskAnalysis;
     }
   } else if (localData.riskAnalysis && !merged.riskAnalysis) {
@@ -3288,11 +3293,12 @@ function runRiskAnalysis() {
     try {
       var analysis = computeRiskScore();
       var report = buildRiskReport(analysis);
-      var data = { timestamp: new Date().toLocaleString('zh-CN'), analysis: analysis, report: report };
+      var now = new Date();
+      var data = { timestamp: now.toLocaleString('zh-CN'), ts: now.getTime(), analysis: analysis, report: report };
       localStorage.setItem('risk_analysis', JSON.stringify(data));
-      // 同步到云端
+      // 同步到本地 + 云端（savePortfolio 同时更新 localStorage 和 jsonblob）
       portfolio.riskAnalysis = data;
-      savePortfolioToCloud();
+      savePortfolio();
       renderRiskReport(data);
       document.getElementById('riskAnalysisTime').textContent = '分析于 ' + data.timestamp;
       updateRiskCard(analysis.total);
