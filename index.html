@@ -662,7 +662,7 @@ async function fetchFX() {
 
 // 内嵌持仓数据 (无需后端也可见)
 // 版本号：更新内嵌数据时递增，自动清除浏览器旧 localStorage 缓存
-const PORTFOLIO_DATA_VERSION = 18;
+const PORTFOLIO_DATA_VERSION = 19;
 const EMBEDDED_PORTFOLIO = {
   "total_assets": 12180606,
   "liquid_assets": 7523606,
@@ -1153,13 +1153,22 @@ function loadPortfolioData() {
           });
         });
       }
-      // 保护嵌套 watchlist：attack.assets[].watchlist 是用户可增删的，用本地数据覆盖
+      // 保护嵌套 watchlist：只保留本地有但默认数据没有的条目（用户手动添加的）
+      // 已经在默认数据里的条目以默认数据为准（防止已删除的条目复活）
       if (parsed.attack && parsed.attack.assets && portfolio.attack && portfolio.attack.assets) {
         portfolio.attack.assets.forEach(function(cat, catIdx) {
           var localCat = parsed.attack.assets[catIdx];
-          if (localCat && localCat.watchlist) {
-            cat.watchlist = localCat.watchlist;
-          }
+          if (!localCat || !localCat.watchlist) return;
+          if (!cat.watchlist) cat.watchlist = [];
+          // 收集默认数据中已有的名称
+          var defaultNames = {};
+          cat.watchlist.forEach(function(w) { if (w.name) defaultNames[w.name] = true; });
+          // 只保留本地有但不在默认数据中的条目
+          localCat.watchlist.forEach(function(w) {
+            if (w.name && !defaultNames[w.name]) {
+              cat.watchlist.push(w);
+            }
+          });
         });
       }
       // 用户自主数据：FCN、启明VC、watchlist、huntingList
