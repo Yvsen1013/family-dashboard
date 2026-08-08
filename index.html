@@ -1415,21 +1415,13 @@ function smartMergeCloud(cloudData, localData) {
     merged.huntingList = localData.huntingList;
   }
 
-  // 保护watchlist（顶层 + 嵌套在 attack.assets[].watchlist）
+  // 保护watchlist（顶层）
   if (localData.watchlist && Array.isArray(localData.watchlist)
       && (!merged.watchlist || !Array.isArray(merged.watchlist)
           || localData.watchlist.length > merged.watchlist.length)) {
     merged.watchlist = localData.watchlist;
   }
-  // 嵌套 watchlist：用户可增删狩猎清单条目，用本地数据覆盖
-  if (localData.attack && localData.attack.assets && merged.attack && merged.attack.assets) {
-    merged.attack.assets.forEach(function(cat, catIdx) {
-      var localCat = localData.attack.assets[catIdx];
-      if (localCat && localCat.watchlist) {
-        cat.watchlist = localCat.watchlist;
-      }
-    });
-  }
+  // 嵌套 watchlist：云端更新时不覆盖——云端数据来自其他设备，是权威版本
 
   // 保护防守端用户自定义资产
   if (localData.defense && localData.defense.userAssets
