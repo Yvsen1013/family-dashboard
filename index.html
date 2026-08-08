@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <script>// 版本缓存破坏：每次部署递增 BUILD_VER，浏览器自动跳到新 URL 强制刷新；?reset=1 清空本地缓存
-(function(){var V='37',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
+(function(){var V='38',s=location.search,q=s?new URLSearchParams(s):new URLSearchParams();if(q.get('reset')==='1'){localStorage.clear();q.delete('reset')}if(q.get('v')!==V){q.set('v',V);location.replace(location.pathname+'?'+q.toString()+location.hash)}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -261,6 +261,23 @@ tr:hover td { background: var(--surface-hover); }
 }
 .overlay-close:hover { background: var(--surface-hover); }
 .overlay-close:active { transform: translate(2px, 2px); box-shadow: none; }
+
+.risk-score-bar { height: 8px; border-radius: 4px; background: var(--surface-hover); overflow: hidden; margin-top: 6px; }
+.risk-score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.risk-dim-card { border: 2px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; background: var(--surface); box-shadow: 3px 3px 0 var(--border); }
+.risk-dim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.risk-dim-title { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.risk-dim-score { font-size: 20px; font-family: var(--num-font); font-weight: 700; letter-spacing: 1px; }
+.risk-dim-body { font-size: 12px; color: var(--text-secondary); line-height: 1.8; }
+.risk-dim-bar { height: 6px; border-radius: 3px; background: var(--surface-hover); overflow: hidden; margin-top: 8px; }
+.risk-dim-bar-fill { height: 100%; border-radius: 3px; }
+.risk-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+.risk-tag-low { background: rgba(46,139,70,0.15); color: var(--green); }
+.risk-tag-mid { background: rgba(217,161,59,0.15); color: var(--amber); }
+.risk-tag-high { background: rgba(207,75,60,0.15); color: var(--red); }
+.risk-action-item { padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 12px; display: flex; align-items: flex-start; gap: 6px; }
+.risk-action-item:last-child { border-bottom: none; }
+.risk-action-urgent { color: var(--red); font-weight: 700; }
 .search-result-item:hover { background: rgba(217,119,87,0.1); }
 .pos-mgr-table-wrap { overflow-x: auto; margin-bottom: 8px; }
 .pos-mgr-table { width: 100%; border-collapse: collapse; }
@@ -389,6 +406,11 @@ tr:hover td { background: var(--surface-hover); }
     <div class="value" style="color:var(--purple);" id="qimingValue">---</div>
     <div class="sub" id="qimingNote"></div>
   </div>
+  <div class="metric-card clickable" onclick="showRiskPanel()" title="点击查看风险分析" id="metricRisk">
+    <div class="label">风险管理 ▸</div>
+    <div class="value" style="color:var(--accent);" id="riskScore">---</div>
+    <div class="sub" id="riskLabel">点击分析</div>
+  </div>
 </div>
 
 <!-- 持仓明细 -->
@@ -504,6 +526,27 @@ tr:hover td { background: var(--surface-hover); }
     </div>
     <div class="overlay-body" id="returnsDetail"></div>
     <div style="margin-top:10px;font-size:11px;color:var(--text-muted);text-align:right;" id="returnsFooter"></div>
+  </div>
+</div>
+
+<!-- 风险管理弹窗 -->
+<div id="riskOverlay" class="overlay" style="display:none;" onclick="if(event.target===this) closeRiskPanel()">
+  <div class="overlay-card" style="max-width:820px;">
+    <div class="overlay-header" style="margin-bottom:20px;">
+      <h2>风险管理</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="riskAnalysisTime" style="font-size:11px;color:var(--text-muted);"></span>
+        <button id="riskAnalyzeBtn" class="position-btn" style="background:var(--accent);" onclick="runRiskAnalysis()">开始分析</button>
+        <button class="overlay-close" onclick="closeRiskPanel()">✕</button>
+      </div>
+    </div>
+    <div class="overlay-body" id="riskDetail">
+      <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+        <div style="font-size:40px;margin-bottom:12px;">◇</div>
+        <p style="font-size:14px;margin-bottom:8px;">点击"开始分析"生成风险评估报告</p>
+        <p style="font-size:12px;">报告基于实时股价和当前持仓数据，手动触发后不会自动更新</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3201,6 +3244,444 @@ fetchFX().then(async () => {
 });
 // 每60秒自动刷新股价
 refreshTimer = setInterval(() => loadPrices(), 60000);
+
+// ══════════════════════════════════════════════
+// 风险管理模块
+// 手动触发分析，不自动更新
+// ══════════════════════════════════════════════
+
+function showRiskPanel() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem('risk_analysis')); } catch(e) {}
+  if (saved && saved.report) {
+    renderRiskReport(saved);
+    document.getElementById('riskAnalysisTime').textContent = '分析于 ' + saved.timestamp;
+  } else {
+    document.getElementById('riskDetail').innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><div style="font-size:40px;margin-bottom:12px;">\u25C7</div><p style="font-size:14px;margin-bottom:8px;">点击"开始分析"生成风险评估报告</p><p style="font-size:12px;">报告基于实时股价和当前持仓数据，手动触发后不会自动更新</p></div>';
+    document.getElementById('riskAnalysisTime').textContent = '';
+  }
+  document.getElementById('riskOverlay').style.display = 'flex';
+}
+
+function closeRiskPanel() {
+  document.getElementById('riskOverlay').style.display = 'none';
+}
+
+function runRiskAnalysis() {
+  var btn = document.getElementById('riskAnalyzeBtn');
+  btn.textContent = '分析中...';
+  btn.disabled = true;
+  setTimeout(function() {
+    try {
+      var analysis = computeRiskScore();
+      var report = buildRiskReport(analysis);
+      var data = { timestamp: new Date().toLocaleString('zh-CN'), analysis: analysis, report: report };
+      localStorage.setItem('risk_analysis', JSON.stringify(data));
+      renderRiskReport(data);
+      document.getElementById('riskAnalysisTime').textContent = '分析于 ' + data.timestamp;
+      updateRiskCard(analysis.total);
+    } catch(e) {
+      document.getElementById('riskDetail').innerHTML = '<div style="text-align:center;padding:30px;color:var(--red);">分析失败: ' + (e.message || e) + '</div>';
+    } finally {
+      btn.textContent = '重新分析';
+      btn.disabled = false;
+    }
+  }, 100);
+}
+
+function riskLevel(score) {
+  if (score <= 25) return { label: '低风险', color: '#2e8b46', bg: 'rgba(46,139,70,0.12)', tag: 'risk-tag-low' };
+  if (score <= 45) return { label: '中低风险', color: '#639922', bg: 'rgba(99,153,34,0.12)', tag: 'risk-tag-low' };
+  if (score <= 65) return { label: '中等风险', color: '#d9a13b', bg: 'rgba(217,161,59,0.12)', tag: 'risk-tag-mid' };
+  if (score <= 80) return { label: '中高风险', color: '#cf4b3c', bg: 'rgba(207,75,60,0.12)', tag: 'risk-tag-high' };
+  return { label: '高风险', color: '#cf4b3c', bg: 'rgba(207,75,60,0.18)', tag: 'risk-tag-high' };
+}
+
+function updateRiskCard(score) {
+  var el = document.getElementById('riskScore');
+  var lbl = document.getElementById('riskLabel');
+  if (score == null) { el.textContent = '---'; lbl.textContent = '点击分析'; return; }
+  var lv = riskLevel(score);
+  el.textContent = score.toFixed(0);
+  el.style.color = lv.color;
+  lbl.textContent = lv.label;
+}
+
+function computeRiskScore() {
+  var totalAssets = computeTotalAssets();
+  var attackTotal = computeAttackTotal();
+  var defenseTotal = computeDefenseDynamic();
+  var now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // 收集所有持仓（含 FCN 标的敞口）
+  var holdings = [];
+  var fcnContracts = [];
+  var stockExposure = {}; // symbol -> total exposure (CNY)
+
+  if (portfolio.attack && portfolio.attack.assets) {
+    for (var cat of portfolio.attack.assets) {
+      if (cat.holdings) {
+        for (var h of cat.holdings) {
+          if (h.shares === 0) continue;
+          var val = holdingValue(h);
+          holdings.push({ name: h.name, symbol: h.symbol, market: h.market, value: val, cost: h.cost, shares: h.shares, target_pe: h.target_pe, tags: h.tags || [] });
+          if (h.symbol) {
+            stockExposure[h.symbol] = (stockExposure[h.symbol] || 0) + val;
+          }
+        }
+      }
+      if (cat.fcn_contracts) {
+        for (var c of cat.fcn_contracts) {
+          fcnContracts.push(c);
+          if (c.symbol) {
+            stockExposure[c.symbol] = (stockExposure[c.symbol] || 0) + c.value;
+          }
+        }
+      }
+    }
+  }
+
+  // ── 1. 集中度风险 (20%) ──
+  var maxExposure = 0, maxSymbol = '';
+  for (var sym in stockExposure) {
+    if (stockExposure[sym] > maxExposure) { maxExposure = stockExposure[sym]; maxSymbol = sym; }
+  }
+  var maxRatio = totalAssets > 0 ? maxExposure / totalAssets : 0;
+  var concScore = 10;
+  if (maxRatio > 0.25) concScore = 90;
+  else if (maxRatio > 0.20) concScore = 75;
+  else if (maxRatio > 0.15) concScore = 55;
+  else if (maxRatio > 0.10) concScore = 35;
+  else if (maxRatio > 0.05) concScore = 20;
+
+  // 前三大持仓集中度
+  var sortedHoldings = holdings.slice().sort(function(a, b) { return b.value - a.value; });
+  var top3 = sortedHoldings.slice(0, 3).reduce(function(s, h) { return s + h.value; }, 0);
+  var top3Ratio = attackTotal > 0 ? top3 / attackTotal : 0;
+  if (top3Ratio > 0.60) concScore += 15;
+  else if (top3Ratio > 0.50) concScore += 10;
+  else if (top3Ratio > 0.40) concScore += 5;
+  concScore = Math.min(concScore, 100);
+
+  var maxName = holdings.find(function(h) { return h.symbol === maxSymbol; });
+  maxName = maxName ? maxName.name : maxSymbol;
+
+  // ── 2. FCN到期风险 (15%) ──
+  var fcnScore = 0;
+  var fcnIssues = [];
+  for (var c of fcnContracts) {
+    var exp = new Date(c.expiry + 'T00:00:00');
+    var days = Math.round((exp - now) / (1000 * 60 * 60 * 24));
+    if (days < 0) {
+      fcnScore += 40;
+      fcnIssues.push({ name: c.id, issue: '已过期 ' + Math.abs(days) + ' 天', severity: 'high' });
+    } else if (days <= 7) {
+      fcnScore += 30;
+      fcnIssues.push({ name: c.id, issue: days + ' 天后到期', severity: 'high' });
+    } else if (days <= 30) {
+      fcnScore += 20;
+      fcnIssues.push({ name: c.id, issue: days + ' 天后到期', severity: 'mid' });
+    } else if (days <= 90) {
+      fcnScore += 10;
+      fcnIssues.push({ name: c.id, issue: days + ' 天后到期', severity: 'low' });
+    }
+    // 行权价缓冲
+    var q = getPrice(c.symbol);
+    if (q && q.price && c.strike) {
+      var buffer = (q.price - c.strike) / c.strike;
+      if (buffer < 0.05 && days >= 0) {
+        fcnScore += 20;
+        fcnIssues.push({ name: c.id, issue: '现价距行权价仅 ' + (buffer * 100).toFixed(1) + '%', severity: 'high' });
+      } else if (buffer < 0.10 && days >= 0) {
+        fcnScore += 10;
+        fcnIssues.push({ name: c.id, issue: '现价距行权价 ' + (buffer * 100).toFixed(1) + '%', severity: 'mid' });
+      }
+    }
+  }
+  fcnScore = Math.min(fcnScore, 100);
+
+  // ── 3. 估值风险 (15%) ──
+  var valScore = 0;
+  var valIssues = [];
+  for (var h of holdings) {
+    if (!h.symbol) continue;
+    var q = getPrice(h.symbol);
+    if (!q || q.pe == null) continue;
+    var pe = q.pe;
+    var weight = attackTotal > 0 ? h.value / attackTotal : 0;
+    var issue = null;
+    if (pe < 0) {
+      valScore += Math.round(12 * weight * 10) / 10;
+      issue = { name: h.name, pe: '亏损', issue: '未盈利', severity: 'mid' };
+    } else if (pe > 200) {
+      valScore += Math.round(15 * weight * 10) / 10;
+      issue = { name: h.name, pe: pe.toFixed(0), issue: 'PE极高', severity: 'high' };
+    } else if (pe > 100) {
+      valScore += Math.round(10 * weight * 10) / 10;
+      issue = { name: h.name, pe: pe.toFixed(0), issue: 'PE偏高', severity: 'mid' };
+    } else if (h.target_pe) {
+      var parts = h.target_pe.split('-').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        if (pe > parts[1]) {
+          valScore += Math.round(8 * weight * 10) / 10;
+          issue = { name: h.name, pe: pe.toFixed(1), issue: '高于目标' + h.target_pe, severity: 'mid' };
+        } else if (pe < parts[0]) {
+          valScore += Math.round(3 * weight * 10) / 10;
+          issue = { name: h.name, pe: pe.toFixed(1), issue: '低于目标' + h.target_pe, severity: 'low' };
+        } else {
+          issue = { name: h.name, pe: pe.toFixed(1), issue: '击球区内', severity: 'ok' };
+        }
+      }
+    } else {
+      issue = { name: h.name, pe: pe.toFixed(1), issue: '无目标区间', severity: 'low' };
+    }
+    if (issue) valIssues.push(issue);
+  }
+  valScore = Math.min(Math.round(valScore * 3), 100);
+
+  // ── 4. 流动性风险 (15%) ──
+  var illiquidValue = portfolio.illiquid ? portfolio.illiquid.value : 0;
+  var lockedValue = 0;
+  if (portfolio.defense && portfolio.defense.assets) {
+    for (var a of portfolio.defense.assets) {
+      if (a.name && (a.name.includes('公积金') || a.name.includes('启明收益'))) lockedValue += a.value || 0;
+    }
+  }
+  var nonLiquidRatio = totalAssets > 0 ? (illiquidValue + lockedValue) / totalAssets : 0;
+  var liqScore = 0;
+  if (nonLiquidRatio > 0.40) liqScore = 70;
+  else if (nonLiquidRatio > 0.30) liqScore = 50;
+  else if (nonLiquidRatio > 0.20) liqScore = 30;
+  else if (nonLiquidRatio > 0.10) liqScore = 15;
+
+  // 现金比率
+  var cashValue = 0;
+  if (portfolio.defense && portfolio.defense.assets) {
+    for (var a of portfolio.defense.assets) {
+      if (a.type === '现金' && a.name && !a.name.includes('公积金') && !a.name.includes('启明收益')) cashValue += a.value || 0;
+    }
+  }
+  var cashRatio = totalAssets > 0 ? cashValue / totalAssets : 0;
+  if (cashRatio < 0.05) liqScore += 25;
+  else if (cashRatio < 0.10) liqScore += 15;
+  else if (cashRatio < 0.20) liqScore += 5;
+  liqScore = Math.min(liqScore, 100);
+
+  // ── 5. 汇率风险 (10%) ──
+  var fxExposure = 0;
+  for (var h of holdings) {
+    if (h.market === 'HK' || h.market === 'US') fxExposure += h.value;
+  }
+  var fxRatio = totalAssets > 0 ? fxExposure / totalAssets : 0;
+  var fxScore = 5;
+  if (fxRatio > 0.30) fxScore = 60;
+  else if (fxRatio > 0.20) fxScore = 40;
+  else if (fxRatio > 0.10) fxScore = 25;
+  else if (fxRatio > 0.05) fxScore = 15;
+
+  // ── 6. 浮亏风险 (25%) ──
+  var totalCost = 0, totalLoss = 0;
+  var lossIssues = [];
+  for (var h of holdings) {
+    if (!h.symbol || !h.cost || !h.shares) continue;
+    var q = getPrice(h.symbol);
+    if (!q || !q.price) continue;
+    var costTotal = h.cost * h.shares;
+    var curTotal = q.price * h.shares;
+    if (h.market === 'HK') curTotal *= FX_HKD_CNY;
+    else if (h.market === 'US') curTotal *= FX_USD_CNY;
+    if (h.market === 'HK') costTotal *= FX_HKD_CNY;
+    else if (h.market === 'US') costTotal *= FX_USD_CNY;
+    var pnl = curTotal - costTotal;
+    var pnlPct = costTotal > 0 ? pnl / costTotal * 100 : 0;
+    if (pnl < 0) {
+      totalLoss += Math.abs(pnl);
+      if (pnlPct < -30) {
+        lossIssues.push({ name: h.name, pct: pnlPct.toFixed(1), amount: Math.abs(pnl), severity: 'high' });
+      } else if (pnlPct < -20) {
+        lossIssues.push({ name: h.name, pct: pnlPct.toFixed(1), amount: Math.abs(pnl), severity: 'mid' });
+      } else if (pnlPct < -10) {
+        lossIssues.push({ name: h.name, pct: pnlPct.toFixed(1), amount: Math.abs(pnl), severity: 'low' });
+      }
+    }
+    totalCost += costTotal;
+  }
+  var lossRatio = totalCost > 0 ? totalLoss / totalCost : 0;
+  var lossScore = 5;
+  if (lossRatio > 0.15) lossScore = 80;
+  else if (lossRatio > 0.10) lossScore = 60;
+  else if (lossRatio > 0.05) lossScore = 40;
+  else if (lossRatio > 0) lossScore = 20;
+  // 深度套牢加成
+  for (var li of lossIssues) {
+    if (li.severity === 'high') lossScore += 15;
+    else if (li.severity === 'mid') lossScore += 10;
+  }
+  lossScore = Math.min(lossScore, 100);
+
+  // 加权总分
+  var total = Math.round(
+    concScore * 0.20 + fcnScore * 0.15 + valScore * 0.15 +
+    liqScore * 0.15 + fxScore * 0.10 + lossScore * 0.25
+  );
+
+  return {
+    total: total,
+    dimensions: [
+      { key: 'concentration', name: '集中度风险', score: concScore, weight: 20,
+        detail: '最大敞口: ' + maxName + ' (' + (maxRatio * 100).toFixed(1) + '%)，前三大占进攻端 ' + (top3Ratio * 100).toFixed(0) + '%',
+        issues: fcnIssues.length > 0 ? [] : [] },
+      { key: 'fcn', name: 'FCN到期风险', score: fcnScore, weight: 15,
+        detail: fcnContracts.length + ' 份合约' + (fcnIssues.length > 0 ? '，' + fcnIssues.length + ' 项需关注' : '，暂无紧迫问题'),
+        issues: fcnIssues },
+      { key: 'valuation', name: '估值风险', score: valScore, weight: 15,
+        detail: valIssues.filter(function(i) { return i.severity !== 'ok'; }).length + ' 个标的偏离估值区间',
+        issues: valIssues },
+      { key: 'liquidity', name: '流动性风险', score: liqScore, weight: 15,
+        detail: '非流动资产 ' + (nonLiquidRatio * 100).toFixed(0) + '%，现金 ' + (cashRatio * 100).toFixed(0) + '%',
+        issues: [] },
+      { key: 'fx', name: '汇率风险', score: fxScore, weight: 10,
+        detail: '外汇敞口 ' + (fxRatio * 100).toFixed(0) + '%（港股+美股）',
+        issues: [] },
+      { key: 'loss', name: '浮亏风险', score: lossScore, weight: 25,
+        detail: totalLoss > 0 ? '总浮亏 ' + formatCN(Math.round(totalLoss)) + '，占成本 ' + (lossRatio * 100).toFixed(1) + '%' : '无浮亏',
+        issues: lossIssues }
+    ],
+    holdings: holdings,
+    summary: {
+      totalAssets: totalAssets, attackTotal: attackTotal, defenseTotal: defenseTotal,
+      maxExposure: { name: maxName, value: maxExposure, ratio: maxRatio },
+      fxExposure: fxExposure, fxRatio: fxRatio,
+      nonLiquidRatio: nonLiquidRatio, cashRatio: cashRatio,
+      totalLoss: totalLoss, lossRatio: lossRatio
+    }
+  };
+}
+
+function buildRiskReport(analysis) {
+  var lv = riskLevel(analysis.total);
+  var dims = analysis.dimensions;
+  var s = analysis.summary;
+
+  // 行动清单
+  var actions = [];
+  for (var d of dims) {
+    if (d.issues) {
+      for (var iss of d.issues) {
+        if (iss.severity === 'high') {
+          actions.push({ text: '[' + d.name + '] ' + (iss.name || '') + ' ' + iss.issue, urgent: true });
+        }
+      }
+    }
+  }
+  // 中等
+  for (var d of dims) {
+    if (d.issues) {
+      for (var iss of d.issues) {
+        if (iss.severity === 'mid') {
+          actions.push({ text: '[' + d.name + '] ' + (iss.name || '') + ' ' + iss.issue, urgent: false });
+        }
+      }
+    }
+  }
+
+  var html = '';
+
+  // 总分卡片
+  html += '<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:16px;background:' + lv.bg + ';border:2px solid var(--border);border-radius:10px;box-shadow:3px 3px 0 var(--border);">';
+  html += '<div style="text-align:center;min-width:100px;">';
+  html += '<div style="font-size:42px;font-family:var(--num-font);font-weight:700;color:' + lv.color + ';line-height:1;">' + analysis.total + '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">/ 100</div>';
+  html += '</div>';
+  html += '<div style="flex:1;">';
+  html += '<div style="font-size:16px;font-weight:800;color:' + lv.color + ';">' + lv.label + '</div>';
+  html += '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">总资产 ' + CNY(s.totalAssets, true) + ' ｜ 进攻端 ' + CNY(s.attackTotal, true) + ' ｜ 防守端 ' + CNY(s.defenseTotal, true) + '</div>';
+  html += '<div class="risk-score-bar"><div class="risk-score-bar-fill" style="width:' + analysis.total + '%;background:' + lv.color + ';"></div></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // 六维度
+  html += '<h3 style="margin-bottom:10px;">六维度风险评分</h3>';
+  for (var d of dims) {
+    var dlv = riskLevel(d.score);
+    html += '<div class="risk-dim-card">';
+    html += '<div class="risk-dim-header">';
+    html += '<span class="risk-dim-title">' + d.name + '<span class="risk-tag ' + dlv.tag + '">' + dlv.label + '</span><span style="font-size:11px;color:var(--text-muted);font-weight:400;">权重 ' + d.weight + '%</span></span>';
+    html += '<span class="risk-dim-score" style="color:' + dlv.color + ';">' + d.score + '<span style="font-size:11px;color:var(--text-muted);">/100</span></span>';
+    html += '</div>';
+    html += '<div class="risk-dim-body">' + d.detail + '</div>';
+    html += '<div class="risk-dim-bar"><div class="risk-dim-bar-fill" style="width:' + d.score + '%;background:' + dlv.color + ';"></div></div>';
+    // issues
+    if (d.issues && d.issues.length > 0) {
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);">';
+      for (var iss of d.issues) {
+        var dot = iss.severity === 'high' ? 'var(--red)' : iss.severity === 'mid' ? 'var(--amber)' : iss.severity === 'ok' ? 'var(--green)' : 'var(--text-muted)';
+        html += '<div style="font-size:11px;padding:2px 0;color:var(--text-secondary);"><span style="color:' + dot + ';">\u25cf</span> ' + (iss.name || '') + (iss.issue ? ' ' + iss.issue : '') + (iss.pe ? ' (PE ' + iss.pe + ')' : '') + (iss.pct ? ' ' + iss.pct + '%' : '') + '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // 资产分布
+  html += '<h3 style="margin-bottom:10px;margin-top:16px;">资产分布概览</h3>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;">';
+  html += riskMiniCard('最大敞口', s.maxExposure.name, (s.maxExposure.ratio * 100).toFixed(1) + '%', s.maxExposure.ratio > 0.20 ? 'var(--red)' : 'var(--amber)');
+  html += riskMiniCard('外汇敞口', '港股+美股', (s.fxRatio * 100).toFixed(0) + '%', s.fxRatio > 0.20 ? 'var(--amber)' : 'var(--green)');
+  html += riskMiniCard('非流动资产', 'VC+公积金', (s.nonLiquidRatio * 100).toFixed(0) + '%', s.nonLiquidRatio > 0.30 ? 'var(--amber)' : 'var(--green)');
+  html += riskMiniCard('现金储备', '可立即动用', (s.cashRatio * 100).toFixed(0) + '%', s.cashRatio < 0.10 ? 'var(--red)' : 'var(--green)');
+  html += '</div>';
+
+  // 浮亏明细
+  if (s.totalLoss > 0) {
+    html += '<h3 style="margin-bottom:10px;margin-top:16px;">浮亏明细</h3>';
+    html += '<div style="border:2px solid var(--border);border-radius:8px;padding:12px;background:var(--surface);box-shadow:3px 3px 0 var(--border);margin-bottom:16px;">';
+    html += '<div style="font-size:13px;margin-bottom:8px;">总浮亏 <span style="color:var(--red);font-family:var(--num-font);font-size:16px;">¥' + formatCN(Math.round(s.totalLoss)) + '</span> <span style="font-size:11px;color:var(--text-muted);">占持仓成本 ' + (s.lossRatio * 100).toFixed(1) + '%</span></div>';
+    var lossDims = dims.find(function(d) { return d.key === 'loss'; });
+    if (lossDims && lossDims.issues && lossDims.issues.length > 0) {
+      for (var li of lossDims.issues) {
+        html += '<div style="font-size:12px;padding:3px 0;color:var(--text-secondary);"><span style="color:' + (li.severity === 'high' ? 'var(--red)' : 'var(--amber)') + ';">\u25cf</span> ' + li.name + ': ' + li.pct + '% (¥' + formatCN(Math.round(li.amount)) + ')</div>';
+      }
+    } else {
+      html += '<div style="font-size:12px;color:var(--text-muted);">无深度套牢持仓</div>';
+    }
+    html += '</div>';
+  }
+
+  // 行动清单
+  if (actions.length > 0) {
+    html += '<h3 style="margin-bottom:10px;margin-top:16px;">行动清单</h3>';
+    html += '<div style="border:2px solid var(--border);border-radius:8px;padding:12px;background:var(--surface);box-shadow:3px 3px 0 var(--border);">';
+    for (var i = 0; i < actions.length; i++) {
+      html += '<div class="risk-action-item"><span style="color:' + (actions[i].urgent ? 'var(--red)' : 'var(--amber)') + ';">' + (actions[i].urgent ? '!' : '\u25cf') + '</span><span' + (actions[i].urgent ? ' class="risk-action-urgent"' : '') + '>' + actions[i].text + '</span></div>';
+    }
+    html += '</div>';
+  }
+
+  // 免责
+  html += '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);text-align:center;border-top:1px dashed var(--border);padding-top:10px;">本报告基于实时股价和当前持仓数据自动生成，仅供参考，不构成投资建议</div>';
+
+  return html;
+}
+
+function riskMiniCard(label, name, value, color) {
+  return '<div style="border:2px solid var(--border);border-radius:8px;padding:10px;background:var(--surface);box-shadow:2px 2px 0 var(--border);text-align:center;"><div style="font-size:11px;color:var(--text-muted);">' + label + '</div><div style="font-size:18px;font-family:var(--num-font);color:' + color + ';margin:4px 0;">' + value + '</div><div style="font-size:11px;color:var(--text-secondary);">' + name + '</div></div>';
+}
+
+function renderRiskReport(data) {
+  document.getElementById('riskDetail').innerHTML = data.report;
+}
+
+// 页面加载时恢复上次分析结果到卡片
+(function() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('risk_analysis'));
+    if (saved && saved.analysis && saved.analysis.total != null) {
+      updateRiskCard(saved.analysis.total);
+    }
+  } catch(e) {}
+})();
 </script>
 <script>
 // 注销旧 Service Worker（清理 PWA 缓存）
